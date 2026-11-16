@@ -1,0 +1,9 @@
+node_modules
+dist
+generated
+coverage
+.env
+prisma/seed-data.json
+scripts/export-bundle.cjs
+scripts/.export-ok
+*.log

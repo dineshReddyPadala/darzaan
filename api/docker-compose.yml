@@ -1,0 +1,144 @@
+services:
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  kafka:
+    image: apache/kafka:3.9.0
+    hostname: kafka
+    ports:
+      - "9092:9092"
+    environment:
+      KAFKA_NODE_ID: 1
+      KAFKA_PROCESS_ROLES: broker,controller
+      KAFKA_LISTENERS: INTERNAL://kafka:29092,EXTERNAL://0.0.0.0:9092,CONTROLLER://kafka:9093
+      KAFKA_ADVERTISED_LISTENERS: INTERNAL://kafka:29092,EXTERNAL://localhost:9092
+      KAFKA_INTER_BROKER_LISTENER_NAME: INTERNAL
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,INTERNAL:PLAINTEXT,EXTERNAL:PLAINTEXT
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:9093
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+      CLUSTER_ID: MkU3OEVBNTcwNTJENDM2Qk
+
+  kafka-ui:
+    image: kafbat/kafka-ui:latest
+    ports:
+      - "8080:8080"
+    environment:
+      KAFKA_CLUSTERS_0_NAME: darzaan
+      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:29092
+      DYNAMIC_CONFIG_ENABLED: "true"
+    depends_on:
+      - kafka
+
+  jaeger:
+    image: jaegertracing/all-in-one:1.62.0
+    ports:
+      - "16686:16686"
+      - "4317:4317"
+
+  otel-collector:
+    image: otel/opentelemetry-collector:0.114.0
+    command: ["--config=/etc/otel-collector.yaml"]
+    ports:
+      - "4318:4318"
+    volumes:
+      - ./otel-collector.yaml:/etc/otel-collector.yaml:ro
+    depends_on:
+      - jaeger
+
+  migrate:
+    build: .
+    environment:
+      AUTH_DATABASE_URL: postgresql://postgres_admin_user:pg_admin_user_pwd_caa_fa_$%^&OIukhjgcvbn@164.52.222.169:5432/darzaan_auth
+      CORE_DATABASE_URL: postgresql://postgres_admin_user:pg_admin_user_pwd_caa_fa_$%^&OIukhjgcvbn@164.52.222.169:5432/darzaan_core
+      NOTIFICATION_DATABASE_URL: postgresql://postgres_admin_user:pg_admin_user_pwd_caa_fa_$%^&OIukhjgcvbn@164.52.222.169:5432/darzaan_notification
+      SEED_PASSWORD: Darzaan#2026
+    command: >
+      sh -c "npx prisma migrate deploy --schema prisma/auth/schema.prisma &&
+             npx prisma migrate deploy --schema prisma/core/schema.prisma &&
+             npx prisma migrate deploy --schema prisma/notification/schema.prisma &&
+             npx tsx prisma/seed.ts"
+
+  api-gateway:
+    build: .
+    command: ["node", "scripts/start.mjs", "api-gateway"]
+    environment: &appenv
+      NODE_ENV: production
+      JWT_SECRET: dev-only-change-me
+      CORS_ORIGINS: http://localhost:5173
+      AUTH_DATABASE_URL: postgresql://postgres_admin_user:pg_admin_user_pwd_caa_fa_$%^&OIukhjgcvbn@164.52.222.169:5432/darzaan_auth
+      CORE_DATABASE_URL: postgresql://postgres_admin_user:pg_admin_user_pwd_caa_fa_$%^&OIukhjgcvbn@164.52.222.169:5432/darzaan_core
+      NOTIFICATION_DATABASE_URL: postgresql://postgres_admin_user:pg_admin_user_pwd_caa_fa_$%^&OIukhjgcvbn@164.52.222.169:5432/darzaan_notification
+      REDIS_URL: redis://redis:6379
+      KAFKA_BROKERS: kafka:29092
+      AUTH_URL: http://auth-service:3001
+      CORE_URL: http://core-service:3002
+      NOTIFICATION_URL: http://notification-service:3003
+      WEB_URL: ${WEB_URL:-http://localhost:5173}
+      FROM_MAIL: ${FROM_MAIL:-}
+      FROM_MAIL_PASSWORD: ${FROM_MAIL_PASSWORD:-}
+      OTEL_ENABLED: "true"
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4318/v1/traces
+    ports:
+      - "3000:3000"
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+
+  auth-service:
+    build: .
+    command: ["node", "scripts/start.mjs", "auth-service"]
+    environment:
+      <<: *appenv
+      PORT: 3001
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+
+  core-service:
+    build: .
+    command: ["node", "scripts/start.mjs", "core-service"]
+    environment:
+      <<: *appenv
+      PORT: 3002
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      kafka:
+        condition: service_started
+
+  notification-service:
+    build: .
+    command: ["node", "scripts/start.mjs", "notification-service"]
+    environment:
+      <<: *appenv
+      PORT: 3003
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      kafka:
+        condition: service_started
+
+  worker:
+    build: .
+    command: ["node", "scripts/start.mjs", "worker"]
+    environment:
+      <<: *appenv
+      PORT: 3004
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      kafka:
+        condition: service_started
