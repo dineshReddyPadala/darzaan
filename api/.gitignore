@@ -3,6 +3,9 @@ dist
 generated
 coverage
 .env
+.env.development
+.env.staging
+.env.production
 prisma/seed-data.json
 scripts/export-bundle.cjs
 scripts/.export-ok

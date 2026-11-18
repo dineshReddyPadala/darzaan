@@ -19,11 +19,18 @@ A premium responsive Darzaan site with seven routes: Home, Collections, Services
 
 ## Deployment
 
-1. Host the frontend build (`dist/`) on your HTTPS static host, configured to rewrite non-asset routes to `index.html` for React Router.
-2. Deploy the Node API behind HTTPS. Appointment and franchise rows live in the core Postgres database.
-3. Route `/api/*` from the site domain to the API gateway, **or** set `VITE_API_URL=https://your-api-domain.example` before building. Same-origin proxy is preferred. If the site and API are on different origins, add the site origin to `CORS_ORIGINS`.
-4. Confirm real boutique availability. The API accepts one active booking per time and consultation mode. A cancelled appointment releases that time.
-5. Confirm store address, location(s), privacy policy, legal notices, customer support, and bank/financial disclosures before public launch.
+Production DNS: `darzaan.com` → this build; API at `https://api.darzaan.com`; staff at `https://app.darzaan.com`.
+
+```bash
+cp .env.production.example .env.production
+npm run build
+```
+
+Copy `dist/` to `/var/www/darzaan/www` on the VPS. Set `VITE_API_URL=https://api.darzaan.com` in `.env.production` before building (forms call the API cross-origin; the API `CORS_ORIGINS` must include `https://darzaan.com` and `https://www.darzaan.com`).
+
+See [deploy/nginx/README.md](../deploy/nginx/README.md) for Nginx, TLS, and API compose on the same host.
+
+Confirm real boutique availability, legal copy, and support details before public launch.
 
 Admin reviews requests in the staff app under Consultations. That screen lists appointment requests, the day’s open and held times, and franchise enquiries. Sign-in uses the staff API; this site does not expose those lists.
 

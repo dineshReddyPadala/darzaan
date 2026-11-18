@@ -1,0 +1,14 @@
+# Overrides env_file for local development (default in docker-compose.apps.yml).
+services:
+  migrate:
+    env_file: .env.development
+  api-gateway:
+    env_file: .env.development
+  auth-service:
+    env_file: .env.development
+  core-service:
+    env_file: .env.development
+  notification-service:
+    env_file: .env.development
+  worker:
+    env_file: .env.development

@@ -1,0 +1,26 @@
+services:
+  migrate:
+    env_file: .env.staging
+  api-gateway:
+    env_file: .env.staging
+  auth-service:
+    env_file: .env.staging
+  core-service:
+    env_file: .env.staging
+  notification-service:
+    env_file: .env.staging
+  worker:
+    env_file: .env.staging
+
+  staff-web:
+    build:
+      context: ../web
+      dockerfile: Dockerfile
+      args:
+        VITE_API_URL: ${VITE_API_URL}
+        VITE_API_MODE: ${VITE_API_MODE:-http}
+        VITE_BUILD_MODE: staging
+    ports:
+      - "5173:80"
+    depends_on:
+      - api-gateway

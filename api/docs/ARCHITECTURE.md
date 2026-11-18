@@ -251,7 +251,7 @@ The retry worker stores `nextAttemptAt` and publishes back to the original topic
 
 ## Scalability and deployment
 
-Local: `docker compose` runs Postgres, Redis, Kafka in KRaft mode, Kafka UI, the OpenTelemetry collector, Jaeger, and the five Node processes.
+Local: `docker compose` (see `api/README.md`) runs Redis, Kafka in KRaft mode, Kafka UI, the OpenTelemetry collector, Jaeger, and—via `docker-compose.apps.yml` plus an env override—the five Node processes. Postgres URLs come from `.env.development`, `.env.staging`, or `.env.production`, not from compose YAML.
 
 AWS shape, not provisioned by this repo:
 

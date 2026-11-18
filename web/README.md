@@ -12,18 +12,46 @@ npm run dev
 
 Open http://localhost:5173.
 
-`npm run build` typechecks and writes `dist/`. `npm run lint` checks the TypeScript sources.
+- `npm run dev` — Vite with `--mode development` (reads `.env.development` or `.env.development.local`)
+- `npm run build` — production bundle (`--mode production`)
+- `npm run build:staging` — staging bundle
+- `npm run preview` / `npm run preview:staging` — serve `dist/` after a build
+- `npm run lint` — ESLint on TypeScript sources
 
-## Modes
+## Environments
 
-Copy `.env.example` to `.env`.
+| Template | Local copy |
+| --- | --- |
+| `.env.development.example` | `.env.development` |
+| `.env.staging.example` | `.env.staging` |
+| `.env.production.example` | `.env.production` |
 
-- `VITE_API_MODE=mock` (the default) uses the reference sample data. A **Demo data** badge stays in the header, and the role switcher is the prototype one. Nothing is sent to a server.
-- `VITE_API_MODE=http` signs in against the gateway at `VITE_API_URL` (http://localhost:3000). The signed-in role is the staff account. Orders, customers, production, QC, packing, deliveries, inventory, and settings save through the API.
+`.env.example` matches development. Vite loads `.env.[mode]` for the active mode.
+
+Example development (live API):
+
+```env
+VITE_API_MODE=http
+VITE_API_URL=http://localhost:3000
+```
+
+- `VITE_API_MODE=mock` — reference sample data, demo badge, prototype role switcher (omit or set in `.env.development.local`)
+- `VITE_API_MODE=http` — staff login and saves through the gateway at `VITE_API_URL`
 
 Staff password: `Darzaan#2026`. Example: `aditi.malhotra@darzaan.test`.
 
 Start the API first. See `api/README.md`.
+
+## Production (app.darzaan.com)
+
+```bash
+cp .env.production.example .env.production
+npm run build
+```
+
+Copy `dist/` to the server (default path `/var/www/darzaan/app`). Nginx serves the SPA; the app calls `https://api.darzaan.com` baked in at build time. Full steps: [deploy/nginx/README.md](../deploy/nginx/README.md).
+
+`web/Dockerfile` is optional for experiments; production does not run the staff app in Docker.
 
 ## Layout
 

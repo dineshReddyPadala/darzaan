@@ -1,0 +1,79 @@
+x-app-docker-env: &app-docker-env
+  AUTH_URL: http://auth-service:3001
+  CORE_URL: http://core-service:3002
+  NOTIFICATION_URL: http://notification-service:3003
+  REDIS_URL: redis://redis:6379
+  KAFKA_BROKERS: kafka:29092
+  OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4318/v1/traces
+
+x-app-service: &app-service
+  build: .
+  env_file: .env.development
+  environment:
+    <<: *app-docker-env
+
+services:
+  migrate:
+    <<: *app-service
+    command: >
+      sh -c "npx prisma migrate deploy --schema prisma/auth/schema.prisma &&
+             npx prisma migrate deploy --schema prisma/core/schema.prisma &&
+             npx prisma migrate deploy --schema prisma/notification/schema.prisma &&
+             npx tsx prisma/seed.ts"
+
+  api-gateway:
+    <<: *app-service
+    command: ["node", "scripts/start.mjs", "api-gateway"]
+    ports:
+      - "3000:3000"
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+
+  auth-service:
+    <<: *app-service
+    command: ["node", "scripts/start.mjs", "auth-service"]
+    environment:
+      <<: *app-docker-env
+      PORT: 3001
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+
+  core-service:
+    <<: *app-service
+    command: ["node", "scripts/start.mjs", "core-service"]
+    environment:
+      <<: *app-docker-env
+      PORT: 3002
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      kafka:
+        condition: service_started
+
+  notification-service:
+    <<: *app-service
+    command: ["node", "scripts/start.mjs", "notification-service"]
+    environment:
+      <<: *app-docker-env
+      PORT: 3003
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      kafka:
+        condition: service_started
+
+  worker:
+    <<: *app-service
+    command: ["node", "scripts/start.mjs", "worker"]
+    environment:
+      <<: *app-docker-env
+      PORT: 3004
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      kafka:
+        condition: service_started

@@ -1,0 +1,15 @@
+services:
+  migrate:
+    env_file: .env.production
+  api-gateway:
+    env_file: .env.production
+    ports:
+      - "127.0.0.1:3000:3000"
+  auth-service:
+    env_file: .env.production
+  core-service:
+    env_file: .env.production
+  notification-service:
+    env_file: .env.production
+  worker:
+    env_file: .env.production
