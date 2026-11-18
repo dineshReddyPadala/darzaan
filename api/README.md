@@ -57,10 +57,12 @@ Staff password for every seeded account is `Darzaan#2026`. Addresses are in `lib
 
 ## Docker
 
-Infra only (Redis, Kafka, Kafka UI, Jaeger, OTEL):
+Compose is split: **`docker-compose.yml`** (redis, kafka, …) and **`docker-compose.apps.yml`** (API services). Always pass **both** (plus an env override), or use the npm scripts below. Running `docker-compose.apps.yml` alone fails with `depends on undefined service "redis"`. Details: [deploy/PRODUCTION.md](../deploy/PRODUCTION.md).
+
+Infra only (Redis, Kafka, Kafka UI, Jaeger, OTEL) when the API runs on the host via `npm run dev`:
 
 ```bash
-docker compose up -d
+npm run compose:infra
 ```
 
 Full stack for an environment (migrations, seed, five API processes). Copy and fill the matching env file first:

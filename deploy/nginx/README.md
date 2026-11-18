@@ -26,6 +26,8 @@ cp .env.production.example .env.production   # fill JWT, DB password, mail
 npm run compose:production
 ```
 
+**Important:** Never run `docker-compose.apps.yml` by itself — it depends on `redis` and `kafka` from `docker-compose.yml`. Use the merged command above or see [../PRODUCTION.md](../PRODUCTION.md).
+
 Gateway is not exposed on the public interface; only `127.0.0.1:3000`.
 
 ## Frontends (static dist)
