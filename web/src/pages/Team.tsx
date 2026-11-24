@@ -17,6 +17,8 @@ import { listUsers, updateUser } from '../services/api';
 import { apiMode } from '../services/mode';
 import type { Employee } from '../types';
 import { cn } from '../utils/cn';
+import { PageHeader } from '../components/ui/PageHeader';
+import { employeeLocationLabel, showsProductionWorkload } from '../utils/team-display';
 import { pageClass, panelClass } from '../utils/styles';
 import { mergeTeam } from '../utils/team-directory';
 
@@ -100,6 +102,7 @@ export function Team() {
   return (
     <div className={pageClass}>
       {dialog}
+      <PageHeader title="Team" subtitle={`${visible.length} people`} />
       <Tabs<Tab>
         value={tab}
         onChange={setTab}
@@ -125,15 +128,15 @@ export function Team() {
           <div className={`${panelClass} overflow-x-auto`}>
               <table className="w-full min-w-[760px] text-sm">
                 <thead>
-                  <tr className="border-b border-line text-left text-ink-muted">
-                    <th className="px-3 py-2 font-medium">Name</th>
+                  <tr className="border-b border-line text-left text-xs font-semibold uppercase tracking-wide text-ink-muted">
+                    <th className="px-3 py-2">Name</th>
                     {tab === 'employees' && (
                       <>
-                        <th className="px-3 py-2 font-medium">Role</th>
-                        <th className="px-3 py-2 font-medium">Location</th>
-                        <th className="px-3 py-2 font-medium">Mobile</th>
-                        <th className="px-3 py-2 font-medium">Active</th>
-                        <th className="px-3 py-2 text-right font-medium">Workload</th>
+                        <th className="px-3 py-2">Role</th>
+                        <th className="px-3 py-2">Location</th>
+                        <th className="px-3 py-2">Mobile</th>
+                        <th className="px-3 py-2">Active</th>
+                        <th className="px-3 py-2 text-right">Workload</th>
                       </>
                     )}
                     {tab === 'attendance' && (
@@ -164,16 +167,18 @@ export function Team() {
                         {tab === 'employees' && (
                           <>
                             <td className="px-3 py-2">{person.role}</td>
-                            <td className="px-3 py-2 text-ink-muted">{person.location}</td>
-                            <td className="px-3 py-2">{person.mobile || '—'}</td>
+                            <td className="px-3 py-2 text-ink-muted">{employeeLocationLabel(person)}</td>
+                            <td className="px-3 py-2 tabular">{person.mobile?.trim() || '—'}</td>
                             <td className="px-3 py-2">
                               <Toggle compact busy={pendingId === String(person.id)} checked={!person.disabled} label={`${person.name} active`} onChange={(active) => setActive(person, active)} />
                             </td>
                             <td className="px-3 py-2 text-right">
-                              <span className="tabular">{person.activeTasks}/{person.capacity}</span>
-                              <div className="ml-auto mt-1 h-1.5 w-20 overflow-hidden rounded-full bg-sunken">
-                                <div className={cn('h-full rounded-full', load >= 100 ? 'bg-critical' : load >= 80 ? 'bg-warning' : 'bg-brand')} style={{ width: `${Math.min(100, load)}%` }} />
-                              </div>
+                              {showsProductionWorkload(person) ? <>
+                                  <span className="tabular">{person.activeTasks}/{person.capacity}</span>
+                                  <div className="ml-auto mt-1 h-1.5 w-20 overflow-hidden rounded-full bg-sunken">
+                                    <div className={cn('h-full rounded-full', load >= 100 ? 'bg-critical' : load >= 80 ? 'bg-warning' : 'bg-brand')} style={{ width: `${Math.min(100, load)}%` }} />
+                                  </div>
+                                </> : <span className="text-ink-muted">—</span>}
                             </td>
                           </>
                         )}

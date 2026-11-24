@@ -10,6 +10,8 @@ import type { Order } from '../types';
 import { cn } from '../utils/cn';
 import { fmtDate, fmtDateTime, inr, TODAY_ISO } from '../utils/format';
 import { isActive } from '../utils/orders';
+import { formatOrderId } from '../utils/displayIds';
+import { paymentReferenceLabel } from '../utils/payments';
 import { orderTotals } from '../utils/pricing';
 import { pageClass, panelClass, statTileClass } from '../utils/styles';
 const tileClass = (on: boolean) => cn(statTileClass, 'text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-brand', on && 'border-brand bg-brand-soft hover:border-brand');
@@ -78,7 +80,7 @@ export function Payments() {
             const t = orderTotals(o);
             return <li key={o.id} className={cn(rowClass, 'py-4', outCols)}>
                     <div className="min-w-0 flex-1">
-                      <p className="text-[15px] font-semibold"><Link to={`/orders/${o.id}?tab=more`} className="hover:underline">{o.id}</Link> · {customerName(o.customerId)}</p>
+                      <p className="text-[15px] font-semibold"><Link to={`/orders/${o.id}?tab=more`} className="hover:underline">{formatOrderId(o.id)}</Link> · {customerName(o.customerId)}</p>
                       <p className="text-sm text-ink-subtle">{o.status}<span className="lg:hidden"> · delivery {fmtDate(o.deliveryDate)}</span></p>
                     </div>
                     <p className="hidden text-[15px] tabular text-ink-muted lg:block">{fmtDate(o.deliveryDate, 'd MMM')}</p>
@@ -105,11 +107,16 @@ export function Payments() {
           }) => <li key={`${o.id}-${p.id}`} className={cn(rowClass, 'py-3.5', ledgerCols)}>
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-[15px] font-medium">{customerName(o.customerId)}</p>
-                    <p className="font-mono text-sm text-ink-muted">{o.id}</p>
+                    <p className="font-mono text-sm text-ink-muted">{formatOrderId(o.id)}</p>
                   </div>
                   <div className="min-w-0 basis-full text-sm text-ink-subtle lg:basis-auto">
-                    <p className="truncate text-ink-muted">{p.method} · {p.reference}</p>
-                    <p className="truncate">{p.by}<span className="lg:hidden"> · {fmtDateTime(p.at)}</span></p>
+                    {(() => {
+                      const { primary, secondary } = paymentReferenceLabel(p.method, p.reference, p.by);
+                      return <>
+                        <p className="truncate text-ink-muted">{primary}</p>
+                        <p className="truncate">{secondary}<span className="lg:hidden"> · {fmtDateTime(p.at)}</span></p>
+                      </>;
+                    })()}
                   </div>
                   <p className="hidden text-sm tabular text-ink-muted lg:block">{fmtDateTime(p.at)}</p>
                   <div><Badge tone={p.kind === 'Refund' ? 'critical' : p.kind === 'Advance' ? 'info' : 'success'}>{p.kind}</Badge></div>

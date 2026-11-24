@@ -82,8 +82,14 @@ export function Inventory() {
         <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search name or SKU" className={`${inputClass} pl-12`} aria-label="Search inventory" />
       </div>
 
-      {tab === 'fabrics' && <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-          {fabrics.filter((f) => `${f.id} ${f.type} ${f.name}`.toLowerCase().includes(s)).map((f) => {
+      {tab === 'fabrics' && (() => {
+        const rows = fabrics.filter((f) => `${f.id} ${f.type} ${f.name}`.toLowerCase().includes(s));
+        if (rows.length === 0) return <div className={cn(panelClass, 'px-5 py-16 text-center')}>
+            <p className="text-[15px] font-medium text-ink-muted">{fabrics.length === 0 ? 'No fabrics yet' : 'No fabrics match your search.'}</p>
+            {canAdd && fabrics.length === 0 && <Button className="mt-4" icon={<PlusIcon className="h-5 w-5" />} onClick={() => setAdding(true)}>Add item</Button>}
+          </div>;
+        return <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+          {rows.map((f) => {
         const out = f.stock === 0;
         const lowS = !out && f.stock < f.reorderLevel;
         return <article key={f.id} className={cn(panelClass, 'flex flex-col overflow-hidden', q && f.id.toLowerCase() === s && 'ring-2 ring-brand')}>
@@ -119,7 +125,8 @@ export function Inventory() {
                 </div>
               </article>;
       })}
-        </div>}
+        </div>;
+      })()}
 
       {tab === 'trims' && <>
           <div className="no-scrollbar mb-4 flex gap-2 overflow-x-auto">
@@ -130,7 +137,13 @@ export function Inventory() {
               <span>Item</span><span>Category</span><span>Stock</span><span>Location</span><span>Cost</span><span>Price</span>
             </div>
             <ul className="divide-y divide-line">
-              {trims.filter((t) => (cat === 'All' || t.category === cat) && `${t.id} ${t.name}`.toLowerCase().includes(s)).map((t) => {
+              {(() => {
+                const rows = trims.filter((t) => (cat === 'All' || t.category === cat) && `${t.id} ${t.name}`.toLowerCase().includes(s));
+                if (rows.length === 0) return <li className="px-5 py-16 text-center">
+                    <p className="text-[15px] font-medium text-ink-muted">{trims.length === 0 ? 'No trims yet' : 'Nothing matches.'}</p>
+                    {canAdd && trims.length === 0 && <Button className="mt-4" onClick={() => setAdding(true)}>Add item</Button>}
+                  </li>;
+                return rows.map((t) => {
             const lowT = t.stock < t.reorderLevel;
             return <li key={t.id} className="grid grid-cols-[1fr_auto] gap-4 px-5 py-4 lg:grid-cols-[minmax(0,1.6fr)_100px_120px_110px_110px_110px] lg:items-center">
                     <div className="flex items-center gap-3">
@@ -146,13 +159,20 @@ export function Inventory() {
                     <span className="hidden text-[15px] tabular lg:block">{inr(t.cost)}</span>
                     <span className="hidden text-[15px] tabular lg:block">{inr(t.price)}</span>
                   </li>;
-          })}
+          });
+              })()}
             </ul>
           </div>
         </>}
 
-      {tab === 'embroidery' && <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-          {samplers.filter((x) => `${x.id} ${x.name}`.toLowerCase().includes(s)).map((x) => <article key={x.id} className={cn(panelClass, 'overflow-hidden')}>
+      {tab === 'embroidery' && (() => {
+        const rows = samplers.filter((x) => `${x.id} ${x.name}`.toLowerCase().includes(s));
+        if (rows.length === 0) return <div className={cn(panelClass, 'px-5 py-16 text-center')}>
+            <p className="text-[15px] font-medium text-ink-muted">{samplers.length === 0 ? 'No embroidery samplers yet' : 'Nothing matches.'}</p>
+            {canAdd && samplers.length === 0 && <Button className="mt-4" onClick={() => setAdding(true)}>Add item</Button>}
+          </div>;
+        return <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+          {rows.map((x) => <article key={x.id} className={cn(panelClass, 'overflow-hidden')}>
               <div className="flex items-center gap-3 p-4">
                 <div className="flex-1">
                   <p className="text-[16px] font-semibold">{x.name}</p>
@@ -161,6 +181,7 @@ export function Inventory() {
                 <QrGlyph value={x.id} size={44} />
               </div>
             </article>)}
-        </div>}
+        </div>;
+      })()}
     </div>;
 }

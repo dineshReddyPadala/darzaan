@@ -170,6 +170,7 @@ export class AuthService {
     this.requireAdmin(actor);
     if (input.roleId === 'super_admin') throw new AppError(HttpStatus.FORBIDDEN, 'A super admin account cannot be created here');
     await this.assertRoleId(input.roleId);
+    if (await this.isStoreFacingRole(input.roleId)) this.assertIndianMobile(input.mobile);
     const storeId = this.assignStore(actor, input.storeId);
     const email = input.email.trim().toLowerCase();
     const existing = await this.prisma.user.findUnique({ where: { email } });
@@ -218,6 +219,11 @@ export class AuthService {
     if (!this.sameStore(actor, user.storeId)) throw new AppError(HttpStatus.FORBIDDEN, 'That account belongs to another store');
     if (input.roleId === 'super_admin') throw new AppError(HttpStatus.FORBIDDEN, 'A super admin account cannot be created here');
     if (input.roleId) await this.assertRoleId(input.roleId);
+    const roleId = input.roleId ?? user.role;
+    if (input.mobile !== undefined && (await this.isStoreFacingRole(roleId))) this.assertIndianMobile(input.mobile);
+    if (input.roleId && (await this.isStoreFacingRole(input.roleId)) && !input.mobile) {
+      this.assertIndianMobile(user.mobile);
+    }
     if (input.disabled === true && entityId(actor.sub) === userId) {
       throw new AppError(HttpStatus.UNPROCESSABLE_ENTITY, 'You can’t disable your own account');
     }
@@ -385,6 +391,26 @@ export class AuthService {
     return { accessToken, refreshToken, refreshId: row.id };
   }
 
+  private async isStoreFacingRole(roleId: string): Promise<boolean> {
+    const catalog = await this.loadCatalog();
+    return catalog[roleId]?.group === 'Store';
+  }
+
+  private assertIndianMobile(mobile: string | undefined | null): void {
+    const digits = (mobile ?? '').replace(/\s/g, '');
+    if (!/^[6-9]\d{9}$/.test(digits)) {
+      throw new AppError(HttpStatus.UNPROCESSABLE_ENTITY, 'Enter a 10-digit mobile number');
+    }
+  }
+
+  private displayLocation(user: { location: string; store: string | null; storeId?: number | null }): string {
+    const loc = user.location?.trim() ?? '';
+    if (loc && loc.toLowerCase() !== 'darzaan') return loc;
+    const store = user.store?.trim();
+    if (store) return store;
+    return loc;
+  }
+
   private profile(user: { id: number; email: string; role: string; name: string; title: string; location: string; store: string | null; storeId?: number | null; mobile?: string | null; address?: string | null; mustChangePassword?: boolean | null }) {
     return {
       id: user.id,
@@ -392,7 +418,7 @@ export class AuthService {
       role: user.role,
       name: user.name,
       title: user.title,
-      location: user.location,
+      location: this.displayLocation(user),
       store: user.store ?? undefined,
       storeId: user.storeId ?? undefined,
       mobile: user.mobile ?? undefined,

@@ -37,7 +37,7 @@ export function Sidebar() {
   // Full labels only on wide screens, and never on task screens.
   const wide = compact ? 'hidden' : 'hidden xl:inline';
   const labelClass = compact ? 'sr-only' : 'sr-only xl:not-sr-only xl:truncate';
-  const linkClass = (isActive: boolean) => cn('group flex h-12 items-center justify-center gap-3 rounded-xl px-3 text-[15px] font-medium transition-colors duration-150 ease-out', !compact && 'xl:justify-start', isActive ? 'bg-brand-soft text-brand' : 'text-ink-muted hover:bg-sunken hover:text-ink');
+  const linkClass = (isActive: boolean) => cn('group flex h-12 items-center justify-center gap-3 rounded-xl px-3 text-[15px] font-medium transition-colors duration-150 ease-out focus:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2', !compact && 'xl:justify-start', isActive ? 'bg-brand-soft text-brand' : 'text-ink-muted hover:bg-sunken hover:text-ink');
   return <aside className={cn('hidden shrink-0 flex-col border-r border-line bg-surface md:flex md:w-[84px]', !compact && 'xl:w-64')}>
       <div className={cn('flex h-16 items-center justify-center gap-3 px-5', !compact && 'xl:justify-start')}>
         <BrandMark />

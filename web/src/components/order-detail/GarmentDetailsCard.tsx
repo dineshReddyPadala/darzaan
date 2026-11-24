@@ -102,7 +102,7 @@ function Row({
               <dl className="grid gap-x-6 gap-y-3 sm:grid-cols-2">
                 {facts.map(([k, v]) => <div key={k}>
                     <dt className="text-xs font-medium text-ink-subtle">{k}</dt>
-                    <dd className="text-[15px]">{v}</dd>
+                    <dd className="text-[15px]">{k === 'Fit details' ? <ClampNotes text={v} max={200} /> : v}</dd>
                   </div>)}
               </dl>
               {shownFields.length > 0 && <div>
@@ -123,4 +123,11 @@ function Row({
           </motion.div>}
       </AnimatePresence>
     </li>;
+}
+
+function ClampNotes({ text, max }: { text: string; max: number }) {
+  const [open, setOpen] = useState(false);
+  const long = text.length > max;
+  const shown = open || !long ? text : `${text.slice(0, max)}…`;
+  return <span>{shown}{long && <button type="button" className="ml-1 text-sm font-medium text-brand hover:underline" onClick={() => setOpen((v) => !v)}>{open ? 'Show less' : 'Show more'}</button>}</span>;
 }

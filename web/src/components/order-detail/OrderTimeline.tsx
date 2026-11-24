@@ -1,7 +1,7 @@
 import React from "react";
 import { BanknoteIcon, BoxIcon, CalendarCheckIcon, CheckCircle2Icon, FactoryIcon, GitPullRequestIcon, MessageCircleIcon, PenLineIcon, PlusCircleIcon, RulerIcon, ScissorsIcon, ShieldCheckIcon, SparklesIcon, TruckIcon, UserCheckIcon, WrenchIcon, type LucideIcon } from "lucide-react";
 import { ActivityEvent, ActivityKind } from "../../types";
-import { fmtDate, fmtTime } from "../../utils/format";
+import { fmtDate, fmtDateTime } from "../../utils/format";
 const icons: Record<ActivityKind, LucideIcon> = {
   created: PlusCircleIcon,
   payment: BanknoteIcon,
@@ -45,7 +45,7 @@ export function OrderTimeline({
               <div className="min-w-0 pt-1">
                 <p className={compact ? 'text-sm leading-snug' : 'text-[15px] leading-snug'}>{e.what}</p>
                 <p className="mt-0.5 text-xs text-ink-subtle">
-                  {e.who} · {fmtTime(e.at)}
+                  {e.who} · {fmtDateTime(e.at)}
                 </p>
               </div>
             </div>

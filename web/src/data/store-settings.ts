@@ -15,6 +15,7 @@ export interface StoreWorkflow {
   graceHours: number;
   leadTimeDays: number;
   tolerance: number;
+  dailyGarmentCapacity: number;
   alterationPolicy: string;
   cancellationPolicy: string;
 }
@@ -68,6 +69,7 @@ export function defaultStoreSettings(): StoreSettingsSlice {
       graceHours: 4,
       leadTimeDays: 10,
       tolerance: 0.5,
+      dailyGarmentCapacity: 12,
       alterationPolicy: 'First and second alterations are free. Third and later alterations are charged at ₹1,500 each.',
       cancellationPolicy: 'Full refund before production starts; 50% once started. Express orders are non-refundable. Customer fabric must be returned.',
     },

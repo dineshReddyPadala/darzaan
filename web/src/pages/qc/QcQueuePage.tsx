@@ -11,6 +11,7 @@ import { qcPath, qcPriority, qcState, type QcState } from '../../hooks/useQcGarm
 import type { QcRework } from '../../types';
 import { cn } from '../../utils/cn';
 import { daysUntil, dueLabel, fmtDate } from '../../utils/format';
+import { formatOrderId } from '../../utils/displayIds';
 import { garmentDue, isActive } from '../../utils/orders';
 import { orderLink } from '../../utils/roles';
 import { inputClass, kpiTileClass, orderListClass, orderListPanelClass, pageClass } from '../../utils/styles';
@@ -65,7 +66,7 @@ export function QcQueuePage() {
   const count = (k: FilterKey) => rows.filter(tests[k]).length;
   const tiles: FilterKey[] = ['overdue', 'pending', 'ready', 'failed'];
   const term = q.trim().toLowerCase();
-  const list = rows.filter(tests[filter]).filter((r) => !term || `${r.o.id} ${r.g.subCategory} ${r.customer}`.toLowerCase().includes(term));
+  const list = rows.filter(tests[filter]).filter((r) => !term || `${formatOrderId(r.o.id)} ${r.g.subCategory} ${r.customer}`.toLowerCase().includes(term));
   const badge = (s: QcState) => s === 'reinspect' ? <Badge tone="attention" dot>Ready for QC</Badge> : s === 'rework' ? <Badge tone="critical" dot>Failed QC</Badge> : <Badge tone="brand" dot>Pending QC</Badge>;
   const note = (s: QcState, rw?: QcRework) => s === 'rework' ? `In repair · ${rw?.assignee ?? 'team'}` : s === 'reinspect' ? `Repaired by ${rw?.assignee ?? 'team'}` : 'From Finishing';
   const dueTone = (d: number) => d < 0 ? 'text-critical' : d <= 1 ? 'text-warning' : 'text-ink-muted';
@@ -137,7 +138,7 @@ export function QcQueuePage() {
                   <div className="min-w-0">
                     <div className="flex items-center gap-2">
                       {overdue && <span className="h-2 w-2 shrink-0 rounded-full bg-critical" aria-label="Overdue" />}
-                      <span className="font-mono text-sm font-medium text-ink-muted">{r.o.id}</span>
+                      <span className="font-mono text-sm font-medium text-ink-muted">{formatOrderId(r.o.id)}</span>
                       {express && <Badge tone="critical"><ZapIcon className="h-3 w-3" />Express</Badge>}
                     </div>
                     <p className="mt-0.5 truncate text-[15px] font-semibold text-ink">{r.customer}</p>
@@ -156,7 +157,7 @@ export function QcQueuePage() {
                 </Link>
               </li>;
         })}
-          {list.length === 0 && <li className="px-5 py-12 text-center text-ink-muted sm:col-span-2">Nothing matches.</li>}
+          {list.length === 0 && <li className="px-5 py-12 text-center text-ink-muted sm:col-span-2">{rows.length === 0 && !term && filter === 'all' ? 'Nothing waiting for inspection.' : 'Nothing matches.'}</li>}
         </ul>
       </div>
     </div>;

@@ -33,6 +33,8 @@ export function WorkflowTab({
 
 }: {order: Order;}) {
   const wf = useOrderWorkflow(order);
+  const workflowLocked = order.status === 'Closed' || order.status === 'Cancelled' || order.status === 'Ready for Pickup';
+  const canManage = wf.canManage && !workflowLocked;
   const {
     role,
     roleDef
@@ -133,10 +135,10 @@ export function WorkflowTab({
                   <span className="tabular text-ink-subtle">{Math.min(p.doneCount, p.steps.length)}/{p.steps.length}</span>
                 </button>;
         })}
-          </div> : viewing.current && wf.canManage ? <DragHint showReset={!!g.stepOrder} onReset={() => wf.resetStepOrder(g.id)} /> : <span />}
-        <div className="flex flex-wrap items-center gap-2">
+          </div> : viewing.current && canManage ? <DragHint showReset={!!g.stepOrder} onReset={() => wf.resetStepOrder(g.id)} /> : workflowLocked && stepProgress(g).doneCount === stepProgress(g).steps.length ? <p className="text-sm text-ink-muted">{stepProgress(g).steps.length} steps done</p> : <span />}
+        <div className="flex flex-wrap items-center gap-2 min-h-10">
           {versions.length > 1 && <RoundMenu versions={versions} selected={viewing.number} onSelect={pickRound} />}
-          {wf.canManage && viewing.current && <>
+          {canManage && viewing.current && <>
               <Button variant="secondary" icon={<PlusIcon className="h-4 w-4" />} onClick={() => setModal({
             kind: 'add',
             stage: current?.stages[0]
@@ -163,7 +165,7 @@ export function WorkflowTab({
 
           {/* Steps */}
           <section aria-label={`Production steps for ${g.subCategory}`}>
-            {wf.canManage && order.garments.length > 1 && shownSteps.length > 0 && <div className="mb-3">
+            {canManage && order.garments.length > 1 && shownSteps.length > 0 && <div className="mb-3">
                 <DragHint showReset={!!g.stepOrder} onReset={() => wf.resetStepOrder(g.id)} />
               </div>}
             {rw && reworkStatus && <QcSentBackCard orderId={order.id} g={g} v={currentRound} status={reworkStatus} route={shownSteps.slice(0, routeLen).map((s) => s.label)} />}
@@ -192,7 +194,7 @@ export function WorkflowTab({
                   if (role === 'tailor' && tasksFor(s).length === 0) return null;
                   const onRoute = (alteration || !!rw && reworkStatus !== 'passed') && i < routeLen;
                   const first = onRoute && i === 0;
-                  return <WorkflowStepRow key={s.key} step={s} number={from + i + 1} garment={g} state={shownStates[i]} tasks={tasksFor(s)} wf={wf} open={isOpen(s.key, i)} last={i === shownSteps.length - 1} mayComplete={!repairing && mayComplete(s.stages)} draggable={wf.canManage} rework={s.key === 'qc' && reworkStatus !== 'repair' ? reworkStatus : undefined} subOverride={first && alt ? `Alteration${g.assignee ? ` · ${g.assignee}` : ''}` : first && rw ? `Repair · ${rw.assignee}` : undefined} nested={first && alt && shownStates[i] === 'current' ? <div className="border-t border-line bg-attention-soft/60 px-4 py-3">
+                  return <WorkflowStepRow key={s.key} step={s} number={from + i + 1} garment={g} state={shownStates[i]} tasks={tasksFor(s)} wf={wf} open={isOpen(s.key, i)} last={i === shownSteps.length - 1} mayComplete={!repairing && mayComplete(s.stages)} draggable={canManage} rework={s.key === 'qc' && reworkStatus !== 'repair' ? reworkStatus : undefined} subOverride={first && alt ? `Alteration${g.assignee ? ` · ${g.assignee}` : ''}` : first && rw ? `Repair · ${rw.assignee}` : undefined} nested={first && alt && shownStates[i] === 'current' ? <div className="border-t border-line bg-attention-soft/60 px-4 py-3">
                         <p className="text-[15px] font-medium">Alter: {alt.issue}</p>
                         {alt.notes && <p className="mt-0.5 text-sm">{alt.notes}</p>}
                         <p className="mt-1 text-sm text-ink-muted tabular">From trial · {fmtDate(alt.at, 'd MMM')}</p>

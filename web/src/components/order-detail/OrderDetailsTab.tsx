@@ -6,6 +6,7 @@ import type { Order } from '../../types';
 import { cn } from '../../utils/cn';
 import { usePackages } from '../../contexts/PackagesContext';
 import { dueLabel, fmtDate, fmtDateTime, inr } from '../../utils/format';
+import { formatOrderId, formatPackageId } from '../../utils/displayIds';
 import { latestUpdate } from '../../utils/packages';
 import { orderTotals } from '../../utils/pricing';
 import { canAccess, orderLink } from '../../utils/roles';
@@ -67,7 +68,7 @@ export function OrderDetailsTab({
           {active && <div className="flex items-start gap-3">
               {order.risk && <SeverityIcon severity={order.risk.severity} />}
               <div className="min-w-0">
-                <p className="text-[15px] font-semibold">{order.risk ? order.risk.message : order.nextAction.label}</p>
+                <p className="text-[15px] font-semibold">{order.risk ? order.risk.message : t.balance <= 0 && order.nextAction.label.toLowerCase().includes('collect balance') ? 'Ready for pickup' : order.nextAction.label}</p>
                 <p className="text-sm text-ink-muted">{order.risk ? `Next: ${order.nextAction.label} · ` : ''}{order.risk?.owner ?? order.nextAction.owner}</p>
               </div>
             </div>}
@@ -93,11 +94,15 @@ export function OrderDetailsTab({
             const last = latestUpdate(p);
             return <li key={p.id} className="min-w-0">
                     <div className="flex items-center justify-between gap-2">
-                      <span className="font-mono text-sm font-semibold">{p.id}</span>
+                      <span className="font-mono text-sm font-semibold">{formatPackageId(p.id, p.orderId)}</span>
                       <PackageStatusBadge status={p.status} />
                     </div>
                     <p className="truncate text-sm text-ink-muted">
-                      {p.status === 'Delivered' ? `OTP confirmed${p.proofPhoto ? ' · photo' : ''} · ${fmtDateTime(p.deliveredAt ?? last.at)}` : `${fmtDateTime(last.at)} · ${last.by}`}
+                      {p.status === 'Delivered'
+                        ? p.destination.kind === 'store'
+                          ? `Received at ${p.destination.name} · ${p.receivedBy ?? last.by} · ${fmtDateTime(p.deliveredAt ?? last.at)}`
+                          : `OTP confirmed${p.proofPhoto ? ' · photo' : ''} · ${fmtDateTime(p.deliveredAt ?? last.at)}`
+                        : `${fmtDateTime(last.at)} · ${last.by}`}
                     </p>
                   </li>;
           })}

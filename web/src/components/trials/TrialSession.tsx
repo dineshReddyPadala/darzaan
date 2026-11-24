@@ -6,6 +6,7 @@ import type { Order } from '../../types';
 import { cn } from '../../utils/cn';
 import { nowIso, uid } from '../../utils/format';
 import { deriveStatus } from '../../utils/orders';
+import { orderTotals } from '../../utils/pricing';
 import { stageOwnerLabel } from '../../utils/roles';
 import { inputClass, textareaClass } from '../../utils/styles';
 import { AlterationForm } from '../order-detail/AlterationForm';
@@ -85,7 +86,7 @@ export function TrialSession({
         ...completeTrial(o, notes || 'Fits well'),
         risk: undefined,
         nextAction: {
-          label: 'Collect balance and hand over',
+          label: orderTotals(o).balance > 0 ? 'Collect balance and hand over' : 'Ready for pickup',
           owner: stageOwnerLabel('delivery')
         }
       };

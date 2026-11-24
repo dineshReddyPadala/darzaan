@@ -37,12 +37,12 @@ export function needsFabric(g: Pick<Garment, 'category'>): boolean {
   return defaultMetersFor(g.category) > 0;
 }
 
-const regularDate = () => suggestDeliveryDate(REGULAR_LEAD_DAYS);
+const defaultDeliveryDate = () => suggestDeliveryDate(REGULAR_LEAD_DAYS);
 
 export function blankGarment(n: number, category = categories[0].name): Garment {
   const cat = categoryDef(category) ?? categories[0];
   return {
-    id: `G${n}`, category: cat.name, subCategory: '', price: undefined, urgency: 'Regular', deliveryDate: regularDate(),
+    id: `G${n}`, category: cat.name, subCategory: '', price: undefined, urgency: 'Regular', deliveryDate: defaultDeliveryDate(),
     fabric: { source: 'Darzaan', meters: cat.meters, pieces: [] },
     embroidery: { mode: 'None', versions: [] }, lining: false, attachments: [], construction: [], finishing: [],
     measurementSource: 'Designer', measurementVerified: true, measurements: {}, extraMeasurements: [], unit: 'in', photos: [], notes: '', customFields: [], stage: 'review'
@@ -147,6 +147,7 @@ export function useNewOrder() {
   const advanceRequired = Math.round(totals.total * ADVANCE_PCT);
   const amount = payment.amount ?? advanceRequired;
   const minDeliveryDate = todayPlus(REGULAR_LEAD_DAYS - 3);
+  const regularDate = () => suggestDeliveryDate(REGULAR_LEAD_DAYS, orders);
   const active = garments.find((g) => g.id === activeId) ?? garments[0];
 
   const expressDue = (g: Garment) => {
@@ -158,8 +159,8 @@ export function useNewOrder() {
   /** The order is delivered when its last garment is ready. */
   const deliveryDate = garments.map(dateFor).sort().pop() ?? regularDate();
   /** Regular garments booked on a day the workshop is already over capacity. */
-  const overloaded = garments.filter((g) => g.urgency === 'Regular' && isFullDay(dateFor(g)));
-  const load = Math.max(0, ...garments.filter((g) => g.urgency === 'Regular').map((g) => loadForDate(dateFor(g)) ?? 0));
+  const overloaded = garments.filter((g) => g.urgency === 'Regular' && isFullDay(dateFor(g), orders));
+  const load = Math.max(0, ...garments.filter((g) => g.urgency === 'Regular').map((g) => loadForDate(dateFor(g), orders) ?? 0));
 
   const updateGarment = (id: string, patch: Partial<Garment> | ((g: Garment) => Garment)) =>
   setGarments((prev) => prev.map((g) => g.id === id ? typeof patch === 'function' ? patch(g) : { ...g, ...patch } : g));
@@ -182,7 +183,7 @@ export function useNewOrder() {
   const setGarmentDate = (id: string, d: string) => {
     updateGarment(id, { deliveryDate: d });
     // Keep the reason while any garment is still on a full day; clear it once none are.
-    const stillFull = isFullDay(d) || garments.some((x) => x.id !== id && x.urgency === 'Regular' && isFullDay(dateFor(x)));
+    const stillFull = isFullDay(d, orders) || garments.some((x) => x.id !== id && x.urgency === 'Regular' && isFullDay(dateFor(x), orders));
     if (!stillFull) setOverrideReason('');
   };
 
@@ -395,7 +396,7 @@ export function useNewOrder() {
     deliveryDate, minDeliveryDate, load, overloaded, overrideReason, setOverrideReason, deliveryMode, setDeliveryMode,
     discountPct, setDiscountPct, discountAmount, deliveryCharge, totals, advanceRequired, amount,
     payment, setPayment, signatures, setSignatures,
-    orderNumber, stepIssue, confirm, saveAsQuote, expressDue, canOverride: canOverrideCapacity(role), user
+    orderNumber, stepIssue, confirm, saveAsQuote, expressDue, canOverride: canOverrideCapacity(role), user, orders
   };
 }
 

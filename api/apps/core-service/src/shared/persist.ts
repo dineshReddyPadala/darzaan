@@ -1,5 +1,7 @@
+import { HttpStatus } from '@nestjs/common';
 import { Prisma } from '../../../../generated/core';
 import { createEvent, type DomainEvent } from '../../../../libs/common/src/events';
+import { AppError } from '../../../../libs/common/src/http';
 import { diffOrder, type EventDraft } from '../../../../libs/common/src/order-diff';
 import { asArray, entityId, text } from '../../../../libs/common/src/scope';
 
@@ -69,6 +71,7 @@ export async function saveOrderDocument(
   if (storeId) order.storeId = storeId;
 
   await syncChildren(tx, orderId!, order);
+  normalizeReadyPickupNextAction(order);
 
   const previousDocument = previous.document && Object.keys(previous.document as object).length
     ? (previous.document as Record<string, unknown>)
@@ -131,7 +134,10 @@ async function syncChildren(tx: Tx, orderId: number, order: Record<string, unkno
   await tx.embroideryVersion.updateMany({ where: { deletedAt: null, garment: droppedGarments }, data: { deletedAt: new Date() } });
   await tx.garment.updateMany({ where: droppedGarments, data: { deletedAt: new Date() } });
 
+  order.activity = normalizeActivityList(asArray(order.activity));
+
   order.payments = await syncList(asArray(order.payments), async (payment) => {
+    validatePayment(payment);
     let id = entityId(payment.id);
     if (id) {
       const row = await tx.payment.findUnique({ where: { id } });
@@ -225,7 +231,7 @@ async function syncChildren(tx: Tx, orderId: number, order: Record<string, unkno
     await tx.trial.updateMany({ where: { orderId, deletedAt: null }, data: { deletedAt: new Date() } });
   }
 
-  order.activity = await syncList(asArray(order.activity), async (activity) => {
+  order.activity = await syncList(order.activity as Record<string, unknown>[], async (activity) => {
     let id = entityId(activity.id);
     if (id) {
       const row = await tx.activityEvent.findUnique({ where: { id } });
@@ -318,4 +324,75 @@ function idsOf(rows: unknown): number[] {
 
 export function draftsToEvents(drafts: EventDraft[], correlationId: string): DomainEvent[] {
   return drafts.map((draft) => createEvent({ ...draft, correlationId }));
+}
+
+function validatePayment(payment: Record<string, unknown>): void {
+  const method = text(payment.method, 'Cash');
+  let reference = text(payment.reference);
+  const by = text(payment.by);
+  const marker = `${method} · `;
+  if (reference.toLowerCase().startsWith(marker.toLowerCase())) {
+    reference = reference.slice(marker.length).trim();
+    payment.reference = reference;
+  }
+  if (method !== 'UPI') return;
+  const ref = reference.trim();
+  if (!ref || ref.toLowerCase() === 'auto' || (by && ref === by)) {
+    throw new AppError(HttpStatus.UNPROCESSABLE_ENTITY, 'UPI payments need a transaction reference');
+  }
+}
+
+function activityWhatKey(what: string): string {
+  return what.trim().replace(/\s+/g, ' ').toLowerCase();
+}
+
+function normalizeActivityList(activities: Record<string, unknown>[]): Record<string, unknown>[] {
+  const rows: Record<string, unknown>[] = activities.map((activity) => {
+    let at = text(activity.at);
+    if (!at || Number.isNaN(Date.parse(at))) at = new Date().toISOString();
+    return { ...activity, at } as Record<string, unknown>;
+  });
+  rows.sort((a, b) => Date.parse(text(b.at)) - Date.parse(text(a.at)));
+  const out: Record<string, unknown>[] = [];
+  for (const row of rows) {
+    const kind = text(row.kind, 'created');
+    const what = activityWhatKey(text(row.what));
+    const prev = out[out.length - 1];
+    if (prev && text(prev.kind, 'created') === kind && activityWhatKey(text(prev.what)) === what) continue;
+    out.push(row);
+  }
+  return out;
+}
+
+function orderPaidAmount(order: Record<string, unknown>): number {
+  return asArray(order.payments).reduce((sum, payment) => {
+    const amount = typeof payment.amount === 'number' ? payment.amount : Number(payment.amount) || 0;
+    return sum + (text(payment.kind) === 'Refund' ? -amount : amount);
+  }, 0);
+}
+
+function approximateOrderTotal(order: Record<string, unknown>): number {
+  const subtotal = asArray(order.garments).reduce((sum, garment) => {
+    const price = typeof garment.price === 'number' ? garment.price : Number(garment.price) || 0;
+    return sum + price;
+  }, 0);
+  if (subtotal <= 0) return 0;
+  const discount = typeof order.discount === 'number' ? order.discount : Number(order.discount) || 0;
+  const delivery = typeof order.deliveryCharge === 'number' ? order.deliveryCharge : Number(order.deliveryCharge) || 0;
+  const taxable = Math.max(0, subtotal - discount);
+  const gst = Math.round(taxable * 0.05);
+  const alterations = asArray(order.alterations).reduce((sum, row) => {
+    const charge = typeof row.charge === 'number' ? row.charge : Number(row.charge) || 0;
+    return sum + charge;
+  }, 0);
+  return taxable + gst + delivery + alterations;
+}
+
+function normalizeReadyPickupNextAction(order: Record<string, unknown>): void {
+  if (text(order.status) !== 'Ready for Pickup') return;
+  const total = approximateOrderTotal(order);
+  const paid = orderPaidAmount(order);
+  if (total <= 0 || paid < total) return;
+  const current = order.nextAction && typeof order.nextAction === 'object' ? (order.nextAction as Record<string, unknown>) : {};
+  order.nextAction = { ...current, label: 'Ready for pickup' };
 }

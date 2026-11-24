@@ -23,7 +23,7 @@ export function kpisFor(role: Role, userName: string, orders: Order[], issues: Q
 
   const all: Record<KpiKey, Omit<Kpi, 'key'>> = {
     atRisk: { label: 'At risk', value: active.filter((o) => o.risk && (o.risk.severity === 'critical' || o.risk.severity === 'warning')).length, to: '/orders?filter=attention', emphasis: true },
-    awaitingPayment: { label: 'Advance pending', value: active.filter((o) => o.status === 'Confirmed' && orderTotals(o).paidPct < 70).length, to: '/payments' },
+    awaitingPayment: { label: 'Awaiting payment', value: active.filter((o) => o.status === 'Confirmed' && orderTotals(o).paidPct < 70).length, to: '/payments' },
     inProduction: { label: ordersView(role).showStage ? 'In production' : 'In workshop', value: active.filter((o) => o.status === 'In Production' || o.status === 'Confirmed').length, to: '/orders?filter=production' },
     readyTrial: { label: 'Ready for trial', value: active.filter((o) => o.status === 'Ready for Trial').length, to: '/orders' },
     readyPickup: { label: 'Ready for pickup', value: active.filter((o) => o.status === 'Ready for Pickup').length, to: '/orders?filter=ready' },

@@ -24,7 +24,10 @@ export const taskTypeLabel = (stage: StageKey) => taskTypes.find((t) => t.stage 
 /** Everyone at the workshop who can take a task (not planning, QC or packing). */
 export function workshopWorkers(): Employee[] {
   return teamList().filter(
-    (e) => e.location === 'Okhla Workshop' && !['Planning', 'QC', 'Packaging'].includes(e.station)
+    (e) => e.location === 'Okhla Workshop'
+      && !['Planning', 'QC', 'Packaging', 'Logistics'].includes(e.station)
+      && e.role !== 'Packaging & Dispatch'
+      && e.role !== 'Runner'
   );
 }
 

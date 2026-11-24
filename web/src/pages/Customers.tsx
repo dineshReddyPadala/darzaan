@@ -2,6 +2,7 @@ import React, { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { ChevronRightIcon, GlobeIcon, MessageCircleIcon, PlusIcon, SearchIcon } from 'lucide-react';
 import { CustomerIntakeModal } from '../components/customers/CustomerIntakeModal';
+import { employees as teamEmployees } from '../data/team';
 import { Avatar } from '../components/ui/Avatar';
 import { Badge } from '../components/ui/Badge';
 import { Button } from '../components/ui/Button';
@@ -9,7 +10,16 @@ import { PageHeader } from '../components/ui/PageHeader';
 import { useApp } from '../contexts/AppContext';
 import { fmtDate, inr } from '../utils/format';
 import { orderTotals } from '../utils/pricing';
+import { formatCustomerId, idMatchesQuery } from '../utils/displayIds';
 import { chipClass, inputClass, pageClass, panelClass } from '../utils/styles';
+
+function designerLabel(c: { designer?: string }, staffById: Map<string, string>): string {
+  const d = (c.designer ?? '').trim();
+  if (!d) return '—';
+  if (staffById.has(d)) return staffById.get(d)!;
+  if (/^[1-9]\d*$/.test(d) && staffById.has(d)) return staffById.get(d)!;
+  return d;
+}
 const filters = ['All', 'VIP', 'Returning', 'New', 'International'] as const;
 export function Customers() {
   const {
@@ -17,6 +27,7 @@ export function Customers() {
     orders,
     can
   } = useApp();
+  const staffById = useMemo(() => new Map(teamEmployees.flatMap((e) => [[String(e.id), e.name], [e.name.toLowerCase(), e.name]])), []);
   const designers = useMemo(() => [...new Set(customers.map((c) => c.designer).filter(Boolean))], [customers]);
   const [q, setQ] = useState('');
   const [filter, setFilter] = useState<(typeof filters)[number]>('All');
@@ -27,7 +38,7 @@ export function Customers() {
     const digits = s.replace(/\D/g, '');
     return customers.filter((c) => {
       const own = orders.filter((o) => o.customerId === c.id);
-      const matchQ = !s || c.name.toLowerCase().includes(s) || String(c.id).toLowerCase().includes(s) || digits.length >= 3 && (c.mobile.replace(/\D/g, '').includes(digits) || c.whatsapp.replace(/\D/g, '').includes(digits)) || own.some((o) => String(o.id).toLowerCase().includes(s));
+      const matchQ = !s || c.name.toLowerCase().includes(s) || idMatchesQuery(c.id, s) || digits.length >= 3 && (c.mobile.replace(/\D/g, '').includes(digits) || c.whatsapp.replace(/\D/g, '').includes(digits)) || own.some((o) => idMatchesQuery(o.id, s));
       const matchF = filter === 'All' || (filter === 'International' ? c.remote : c.tier === filter);
       const matchD = designer === 'Any designer' || c.designer === designer;
       return matchQ && matchF && matchD;
@@ -79,7 +90,7 @@ export function Customers() {
                       {c.tier === 'VIP' && <Badge tone="brand">VIP</Badge>}
                       {c.remote && <GlobeIcon className="h-4 w-4 text-info" aria-label="International" />}
                     </p>
-                    <p className="text-sm text-ink-subtle">{c.id} · {c.city}</p>
+                    <p className="text-sm text-ink-subtle">{formatCustomerId(c.id)} · {c.city}</p>
                   </div>
                 </div>
                 <div className="hidden min-w-0 lg:block">
@@ -88,7 +99,7 @@ export function Customers() {
                     <MessageCircleIcon className="h-3.5 w-3.5" /> {c.whatsappAvailable ? 'WhatsApp' : 'No WhatsApp'}
                   </p>
                 </div>
-                <span className="hidden text-[15px] text-ink-muted lg:block">{c.designer}</span>
+                <span className="hidden text-[15px] text-ink-muted lg:block">{designerLabel(c, staffById)}</span>
                 <span className="hidden text-[15px] tabular lg:block">{count}</span>
                 <span className="hidden text-[15px] text-ink-muted lg:block">{last ? fmtDate(last) : '—'}</span>
                 <span className="text-right text-[15px] font-medium tabular">{inr(spend)}</span>

@@ -19,7 +19,7 @@ describeIf('order persistence', () => {
       deliveryDate: '2026-12-01',
       priority: 'Regular',
       garments: [{ id: 'G1', category: 'Blouse', subCategory: 'Blouse', stage: 'cutting', fabric: { pieces: [] }, embroidery: { versions: [] } }],
-      payments: [{ id: 'P1', amount: 1500, method: 'UPI', reference: '', at: '2026-11-03T10:00:00', by: 'Ritu Sharma', kind: 'Advance' }],
+      payments: [{ id: 'P1', amount: 1500, method: 'UPI', reference: 'TXN-482910', at: '2026-11-03T10:00:00', by: 'Ritu Sharma', kind: 'Advance' }],
       alterations: [],
       activity: [],
     }, { correlationId: 'test', emit: true }));

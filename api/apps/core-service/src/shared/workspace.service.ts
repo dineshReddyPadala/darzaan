@@ -15,6 +15,8 @@ import {
 } from '../../../../libs/common/src/role-catalog';
 import { isPrivileged, type DataScope, type PermAction, type PermEntity } from '../../../../libs/common/src/roles';
 import { booleanMap, defaultStoreSettings, normalizeStoreSettings } from '../../../../libs/common/src/store-settings';
+import { enrichCustomer, enrichOrder, enrichPackages } from '../../../../libs/common/src/enrich-state';
+import { validateAndNormalizePackages } from '../../../../libs/common/src/packages-collection';
 import { asArray, entityId, isRecord, mergeAssignedOrder, mergeProtectedCustomer, mergeProtectedOrder, orderAssignedTo, presentAssignedOrder, presentCustomer, presentOrder, text } from '../../../../libs/common/src/scope';
 import { cacheGet, cacheSet } from '../../../../libs/observability/src/cache';
 import { IdempotencyService } from './idempotency.service';
@@ -63,8 +65,16 @@ export class WorkspaceService {
     const byKey = new Map(snapshots.map((row) => [row.key, row.body]));
     let visibleOrders = orders
       .map((row) => orderDocument(row))
-      .map((order) => presentOrder(order, scope));
-    let visibleCustomers = customers.map((row) => presentCustomer(row.document as Record<string, unknown>, scope));
+      .map((order, i) =>
+        enrichOrder(presentOrder(order, scope), orders[i].id, orders[i].customerId ?? undefined),
+      );
+    let visibleCustomers = customers.map((row) =>
+      enrichCustomer(
+        presentCustomer(row.document as Record<string, unknown>, scope),
+        row.id,
+        row.designer,
+      ),
+    );
     if (user.role === 'tailor') {
       visibleOrders = visibleOrders.filter((order) => orderAssignedTo(order, user.name)).map((order) => presentAssignedOrder(order, user.name));
       const customerIds = new Set(visibleOrders.map((order) => String(order.customerId ?? '')));
@@ -75,7 +85,10 @@ export class WorkspaceService {
       customers: visibleCustomers,
       roles: mergeRoleCatalog(byKey.get('roles')),
     };
-    for (const key of LIST_SNAPSHOT_KEYS) body[key] = byKey.get(key) ?? (key === 'notificationSettings' ? {} : []);
+    for (const key of LIST_SNAPSHOT_KEYS) {
+      const raw = byKey.get(key) ?? (key === 'notificationSettings' ? {} : []);
+      body[key] = key === 'packages' ? enrichPackages(raw) : raw;
+    }
     const stores = await this.prisma.store.findMany({ where: { deletedAt: null }, orderBy: { id: 'asc' } });
     body.locations = stores.map(toLocation);
     body.storeSettings = await this.storeSettingsFor(user, body.locations, byKey.get('storeSettings'), byKey.get('notificationSettings'));
@@ -118,7 +131,9 @@ export class WorkspaceService {
     saved.store = text(saved.store) || place.label;
     const result = await this.idempotency.run('order.write', key, saved, async (tx) => {
       const written = await saveOrderDocument(tx, saved, { correlationId, emit: true });
-      return { code: 201, body: presentOrder(written.order, scope) };
+      const oid = entityId(written.order.id) ?? entityId(saved.id);
+      const cid = entityId(written.order.customerId) ?? entityId(saved.customerId);
+      return { code: 201, body: enrichOrder(presentOrder(written.order, scope), oid ?? undefined, cid ?? undefined) };
     });
     return result;
   }
@@ -143,8 +158,14 @@ export class WorkspaceService {
     if (!text(merged.store)) merged.store = place.label;
     const result = await this.idempotency.run('order.write', key, merged, async (tx) => {
       const written = await saveOrderDocument(tx, merged, { correlationId, emit: true });
-      const body = presentOrder(written.order, scope);
-      return { code: 200, body: user.role === 'tailor' ? presentAssignedOrder(body, user.name) : body };
+      const presented = presentOrder(written.order, scope);
+      const body = user.role === 'tailor' ? presentAssignedOrder(presented, user.name) : presented;
+      const oid = entityId(written.order.id) ?? orderId ?? undefined;
+      const cid = existing.customerId ?? undefined;
+      return {
+        code: 200,
+        body: enrichOrder(body, oid, cid),
+      };
     });
     return result;
   }
@@ -162,7 +183,11 @@ export class WorkspaceService {
       const merged = mergeProtectedCustomer(existingRow ? (existingRow.document as Record<string, unknown>) : null, customer, scope);
       merged.storeId = place.id;
       const written = await this.writeCustomer(tx, merged, text(merged.store) || place.label);
-      return { code: creating ? 201 : 200, body: presentCustomer(written, scope) };
+      const id = entityId(written.id);
+      return {
+        code: creating ? 201 : 200,
+        body: enrichCustomer(presentCustomer(written, scope), id ?? undefined, undefined),
+      };
     });
     return result;
   }
@@ -184,7 +209,10 @@ export class WorkspaceService {
     if (key === 'team') {
       await this.assert(user, 'team', 'update');
     }
-    const list = Array.isArray(body) ? body.filter(isRecord) : [];
+    let list = Array.isArray(body) ? body.filter(isRecord) : [];
+    if (key === 'packages' && list.length) {
+      list = validateAndNormalizePackages(list, user);
+    }
     const stored: Prisma.InputJsonValue = Array.isArray(body)
       ? (list as Prisma.InputJsonValue)
       : isRecord(body)
@@ -275,7 +303,8 @@ export class WorkspaceService {
       });
     }
     if (!user.storeId || !(user.storeId in stored)) return {};
-    return { [user.storeId]: stored[user.storeId] };
+    const key = String(user.storeId);
+    return { [key]: normalizeStoreSettings(stored[key], notifications) };
   }
 
   private async saveRoles(user: AuthUser, body: unknown) {
@@ -414,13 +443,17 @@ export class WorkspaceService {
   private async writeCustomer(tx: Prisma.TransactionClient, customer: Record<string, unknown>, store: string | null): Promise<Record<string, unknown>> {
     const id = entityId(customer.id);
     const storeId = entityId(customer.storeId);
+    let designer = text(customer.designer);
+    const customerKey = id ? String(id) : text(customer.id);
+    if (designer && (/^[1-9]\d*$/.test(designer) || (customerKey && designer === customerKey))) designer = '';
+    customer.designer = designer;
     const data = {
       name: text(customer.name),
       mobile: text(customer.mobile),
       email: text(customer.email),
       city: text(customer.city),
       tier: text(customer.tier, 'New'),
-      designer: text(customer.designer),
+      designer,
       store: store ?? text(customer.store, 'Khan Market'),
       storeId: storeId ?? undefined,
       deletedAt: null,
@@ -513,8 +546,10 @@ function storeWhere(limit: number | null | undefined): { OR: [{ storeId: number 
 const ORDER_LISTS = ['garments', 'payments', 'alterations', 'changeRequests', 'activity', 'messages', 'signatures'] as const;
 
 /** The saved document is what the desk renders. Older rows can omit the date and the lists. */
-function orderDocument(row: { document: unknown; deliveryDate: string; createdAt: Date }): Record<string, unknown> {
+function orderDocument(row: { id: number; customerId: number | null; document: unknown; deliveryDate: string; createdAt: Date }): Record<string, unknown> {
   const document = isRecord(row.document) ? { ...row.document } : {};
+  if (!entityId(document.id)) document.id = row.id;
+  if (row.customerId != null && !entityId(document.customerId)) document.customerId = row.customerId;
   if (typeof document.deliveryDate !== 'string' || !document.deliveryDate) {
     document.deliveryDate = row.deliveryDate || row.createdAt.toISOString().slice(0, 10);
   }

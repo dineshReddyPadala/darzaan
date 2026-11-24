@@ -108,14 +108,14 @@ function DatesReview({
   return <section className={`${panelClass} p-5`} aria-label="Review delivery dates">
       <h3 className="mb-4 text-[15px] font-semibold">Review dates</h3>
       <div className="grid gap-6 2xl:grid-cols-[minmax(0,1.5fr)_minmax(240px,1fr)]">
-        <DeliveryHeatmap key={first} startOn={first} markers={markers} urgent={urgent} minDate={o.minDeliveryDate} size="large" />
+        <DeliveryHeatmap key={first} startOn={first} markers={markers} urgent={urgent} minDate={o.minDeliveryDate} orders={o.orders} size="large" />
         <ul className="divide-y divide-line self-start rounded-xl ring-1 ring-line">
           {rows.map(({
           g,
           i,
           date
         }) => {
-          const load = loadForDate(date);
+          const load = loadForDate(date, o.orders);
           return <li key={g.id} className="flex items-center gap-3 px-4 py-3">
                 <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-sunken text-xs font-semibold tabular">{i + 1}</span>
                 <span className="min-w-0 flex-1">
@@ -149,9 +149,9 @@ function GarmentDelivery({
   const date = o.dateFor(g);
   const express = g.urgency !== 'Regular';
   const charge = expressImpact(g, g.urgency);
-  const load = loadForDate(date);
+  const load = loadForDate(date, o.orders);
   const level = load !== null ? levelFor(load) : null;
-  const full = !express && isFullDay(date);
+  const full = !express && isFullDay(date, o.orders);
   return <li>
       <div className="grid gap-3 px-5 py-4 md:grid-cols-[minmax(0,1fr)_minmax(190px,auto)] md:items-center">
         <p className="min-w-0 truncate text-[15px] font-semibold md:col-span-2"><span className="mr-2 text-ink-muted tabular">{index + 1}</span>{g.subCategory || g.category}</p>

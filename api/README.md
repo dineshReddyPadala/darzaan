@@ -115,6 +115,10 @@ The other processes use `npm run start:auth`, `start:core`, `start:notification`
 
 Run each process as its own ECS Fargate service. Put only the gateway behind the load balancer. Use RDS for the three databases, ElastiCache for Redis, and Amazon MSK for Kafka. Keep `JWT_SECRET` and the database URLs in Secrets Manager.
 
+## Staff UI QA alignment (core + auth)
+
+After changes that touch display codes, payments, packages, store settings capacity, or auth validation, rebuild and redeploy **core-service** and **auth-service** images (or run `npm run build` on the host). Rebuild the staff **`web/dist`** when `capacity.ts` or store settings types change. State responses now include `orderCode`, `customerCode`, and `packageCode` on read; numeric `id` values remain for writes.
+
 ## Forms and keys
 
 Request bodies for orders and customers are the same objects the screens already build. Field names are not renamed. Workshop roles do not receive prices, payments, or customer contacts, and a save from those roles cannot clear the stored values.

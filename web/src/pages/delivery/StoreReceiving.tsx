@@ -13,9 +13,10 @@ import { useApp } from '../../contexts/AppContext';
 import { type ReceiveOutcome, UNREADABLE, usePackages } from '../../contexts/PackagesContext';
 import { useScanLookup } from '../../hooks/useScanLookup';
 import type { PackageRecord } from '../../types/packaging';
+import { formatOrderId, formatPackageId } from '../../utils/displayIds';
 import { cn } from '../../utils/cn';
 import { fmtDate, fmtDateTime } from '../../utils/format';
-import { garmentNames, isLate, itemQty, onTheRoad } from '../../utils/packages';
+import { garmentNames, isLate, itemQty, latestUpdate, onTheRoad } from '../../utils/packages';
 import { orderListClass, orderListPanelClass, pageClass } from '../../utils/styles';
 type Tab = 'incoming' | 'received';
 const cols = 'lg:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)_140px_120px_170px_24px]';
@@ -122,17 +123,18 @@ export function StoreReceiving() {
         <ul className={orderListClass}>
           {list.map((p) => {
           const disc = p.discrepancy && !p.discrepancy.resolvedAt;
+          const last = latestUpdate(p);
           const when = tab === 'incoming' ? fmtDate(p.deadline, 'EEE d MMM') : fmtDateTime(p.deliveredAt ?? '');
           return <li key={p.id}>
                 <button type="button" onClick={() => setOpenId(p.id)} className={cn('group flex h-full w-full flex-col rounded-2xl border border-line-strong bg-surface p-4 text-left shadow-soft hover:border-ink-subtle focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand lg:grid lg:items-center lg:gap-x-4 lg:rounded-none lg:border-0 lg:px-5 lg:py-4 lg:shadow-none lg:hover:bg-canvas', cols)}>
                   <div className="min-w-0">
-                    <p className="font-mono text-sm font-semibold">{p.orderId}</p>
                     <p className="truncate text-[15px] font-semibold">{customerOf(p)}</p>
+                    <p className="font-mono text-sm text-ink-subtle">{formatOrderId(p.orderId)} · {formatPackageId(p.id, p.orderId)}</p>
                   </div>
                   <p className="mt-2 truncate text-[15px] text-ink-muted lg:mt-0">{garmentNames(p)} · {p.items.length} item{p.items.length > 1 ? 's' : ''}</p>
                   <p className="mt-1 truncate text-sm lg:mt-0"><span className="text-ink-subtle lg:hidden">Driver · </span>{p.runner ?? <span className="text-ink-subtle">—</span>}</p>
                   <p className={cn('mt-1 text-sm lg:mt-0', tab === 'incoming' && isLate(p) ? 'font-medium text-critical' : 'text-ink-muted')}>{when}</p>
-                  <div className="mt-3 lg:mt-0">{disc ? <Badge tone="critical"><TriangleAlertIcon className="h-3.5 w-3.5" aria-hidden />Discrepancy</Badge> : <DeliveryStateBadge p={p} />}</div>
+                  <div className="mt-3 lg:mt-0">{disc ? <Badge tone="critical"><TriangleAlertIcon className="h-3.5 w-3.5" aria-hidden />Discrepancy</Badge> : tab === 'received' && p.destination.kind === 'store' && p.status === 'Delivered' ? <span className="text-sm text-ink">Received · {p.receivedBy ?? last.by}</span> : <DeliveryStateBadge p={p} />}</div>
                   <ChevronRightIcon className="hidden h-5 w-5 text-ink-subtle lg:block" aria-hidden />
                 </button>
               </li>;

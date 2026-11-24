@@ -15,6 +15,7 @@ import type { Garment, Order } from '../types';
 import { cn } from '../utils/cn';
 import { daysUntil, fmtDate, TODAY, TODAY_ISO } from '../utils/format';
 import { kpisFor } from '../utils/kpis';
+import { idMatchesQuery } from '../utils/displayIds';
 import { buildActionItems, garmentsSummary, isActive, stageLabel } from '../utils/orders';
 import { actsOnGarment, ordersView, workPathFor } from '../utils/roles';
 import { severityLabel } from '../utils/status';
@@ -113,7 +114,7 @@ export function Dashboard() {
   const {
     issues
   } = useQc();
-  const pulse = kpisFor(role, user.name, orders, issues).slice(0, 5);
+  const pulse = kpisFor(role, user.name, orders, issues);
   const s = q.trim().toLowerCase();
   const filterDef = orderFilters.find((f) => f.key === filter)!;
   const orderTest = kpi ? kpiOrderTest[kpi] : undefined;
@@ -123,7 +124,7 @@ export function Dashboard() {
     setKpi(kpi === k || k === 'myQueue' ? null : k);
     setFilter('all');
   };
-  const tableRows = active.filter((o) => !orderTest || orderTest(o)).filter(filterDef.test).filter((o) => !s || String(o.id).toLowerCase().includes(s) || customerName(o.customerId).toLowerCase().includes(s) || garmentsSummary(o).toLowerCase().includes(s)).sort((a, b) => statusRank(a) - statusRank(b) || a.deliveryDate.localeCompare(b.deliveryDate));
+  const tableRows = active.filter((o) => !orderTest || orderTest(o)).filter(filterDef.test).filter((o) => !s || idMatchesQuery(o.id, s) || customerName(o.customerId).toLowerCase().includes(s) || garmentsSummary(o).toLowerCase().includes(s)).sort((a, b) => statusRank(a) - statusRank(b) || a.deliveryDate.localeCompare(b.deliveryDate));
   const visible = showAll ? items : items.slice(0, ATTENTION_LIMIT);
   const hour = TODAY.getHours();
   const attention = <section className={panelClass} aria-labelledby="attention-h">
@@ -167,9 +168,7 @@ export function Dashboard() {
           </div>}
       </header>
 
-      <section aria-label="Today at a glance" className="no-scrollbar -mx-4 mb-8 flex gap-3 overflow-x-auto px-4 pb-1 md:mx-0 md:grid md:px-0" style={{
-      gridTemplateColumns: `repeat(${pulse.length}, minmax(0, 1fr))`
-    }}>
+      <section aria-label="Today at a glance" className="mb-8 grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-6">
         {pulse.map((p) => {
         const alert = p.emphasis && typeof p.value === 'number' && p.value > 0;
         const on = kpi === p.key;

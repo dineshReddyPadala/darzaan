@@ -15,6 +15,7 @@ import { useApp } from '../contexts/AppContext';
 import { cn } from '../utils/cn';
 import { canAccess, normaliseOrderTab, type OrderTabKey } from '../utils/roles';
 import { OrderBarcode } from '../components/orders/OrderBarcode';
+import { formatOrderId } from '../utils/displayIds';
 import { orderStatusTone } from '../utils/status';
 import { pageClass } from '../utils/styles';
 type ModalKey = 'payment' | 'change' | 'cancel' | 'trial' | null;
@@ -37,6 +38,7 @@ export function OrderDetail() {
   } = useApp();
   const [modal, setModal] = useState<ModalKey>(null);
   const [menu, setMenu] = useState(false);
+  const [showCode, setShowCode] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
   const scope = roleDef.scope;
   const allowedTabs = roleDef.orderTabs.filter((k) => k !== 'workflow' || scope.production);
@@ -95,6 +97,10 @@ export function OrderDetail() {
     return null;
   })();
   const menuItems = [{
+    label: showCode ? 'Hide order code' : 'Show order code',
+    on: () => setShowCode((v) => !v),
+    show: true
+  }, {
     label: 'Change request',
     on: () => setModal('change'),
     show: active && can('order', 'update')
@@ -121,11 +127,9 @@ export function OrderDetail() {
             {order.priority === 'Express' && <Badge tone="warning" size="md"><ZapIcon className="h-3.5 w-3.5" />Express</Badge>}
           </div>
           <p className="mt-2 text-[16px] text-ink-muted">
-            <span className="font-mono">{order.id}</span> · {order.garments.length} garment{order.garments.length > 1 ? 's' : ''}
+            <button type="button" onClick={() => setShowCode((v) => !v)} className="font-mono text-brand hover:underline">{formatOrderId(order.id)}</button> · {order.garments.length} garment{order.garments.length > 1 ? 's' : ''}
           </p>
-          <div className="mt-4">
-            <OrderBarcode value={order.id} />
-          </div>
+          {showCode && <div className="mt-3 max-w-xs"><OrderBarcode value={order.id} compact /></div>}
         </div>
         <div className="flex shrink-0 gap-2">
           {primary && ('to' in primary && primary.to ? <Link to={primary.to} className={buttonClass('primary', 'lg')}>{primary.label} <ArrowRightIcon className="h-5 w-5" /></Link> : <Button size="lg" onClick={'on' in primary ? primary.on : undefined} iconRight={<ArrowRightIcon className="h-5 w-5" />}>{primary.label}</Button>)}
@@ -146,7 +150,7 @@ export function OrderDetail() {
       {allowedTabs.length > 1 && <Tabs<OrderTabKey> value={tab} onChange={setTab} tabs={allowedTabs.map((k) => ({
       key: k,
       label: tabLabels[k],
-      count: k === 'workflow' ? order.tasks?.filter((t) => t.status !== 'Done').length : undefined
+      count: k === 'workflow' && ['In Production', 'Confirmed', 'Alteration'].includes(order.status) ? order.tasks?.filter((t) => t.status !== 'Done').length || undefined : undefined
     }))} />}
       <div className="pt-5">
         {tab === 'details' && <OrderDetailsTab order={order} trialOpen={trialOpen} onStartTrial={startTrial} onCloseTrial={closeTrial} onBook={() => setModal('trial')} onRecordPayment={() => setModal('payment')} />}

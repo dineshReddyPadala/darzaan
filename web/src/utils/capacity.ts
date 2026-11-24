@@ -1,14 +1,25 @@
 import { differenceInCalendarDays, parseISO } from 'date-fns';
 import { capacityStart, dailyLoadPct } from '../data/capacity';
+import { readStoreSettings } from '../data/store-settings';
+import type { Order } from '../types';
+import { readSession } from '../services/session';
+import { isActive } from './orders';
 import { todayPlus } from './format';
 
 export type CapacityLevel = 'available' | 'busy' | 'near' | 'full' | 'overloaded';
 
-/**
- * Bright, clearly separated fills, each with text that passes WCAG AA (4.5:1 or better):
- * Available 6.6:1 · Busy 7.2:1 · Near 6.5:1 · Full 5.6:1 · Overloaded (white on #B42323) 6.5:1.
- * Each fill also carries an edge in its own text colour so pale cells still read against white (3:1 for shapes).
- */
+/** Garment slots the workshop can finish in one day (Settings → Workflow). */
+export const DEFAULT_DAILY_GARMENT_CAPACITY = 12;
+
+export function dailyGarmentCapacityFromSettings(): number {
+  const settings = readStoreSettings();
+  const session = readSession();
+  const key = session?.user?.storeId != null ? String(session.user.storeId) : Object.keys(settings)[0];
+  const cap = key ? settings[key]?.workflow?.dailyGarmentCapacity : undefined;
+  if (typeof cap === 'number' && cap >= 1 && cap <= 999) return cap;
+  return DEFAULT_DAILY_GARMENT_CAPACITY;
+}
+
 export const levelMeta: Record<CapacityLevel, {label: string;cell: string;dot: string;}> = {
   available: { label: 'Available', cell: 'bg-heat-0 text-[#14532D] ring-1 ring-inset ring-[#14532D]/35', dot: 'bg-heat-0 ring-1 ring-inset ring-[#14532D]' },
   busy: { label: 'Busy', cell: 'bg-heat-1 text-[#713F12] ring-1 ring-inset ring-[#713F12]/35', dot: 'bg-heat-1 ring-1 ring-inset ring-[#713F12]' },
@@ -17,16 +28,25 @@ export const levelMeta: Record<CapacityLevel, {label: string;cell: string;dot: s
   overloaded: { label: 'Overloaded', cell: 'bg-heat-4 text-white', dot: 'bg-heat-4' }
 };
 
-export function loadForDate(iso: string): number | null {
+function bookedGarmentDays(iso: string, orders: Order[]): number {
+  return orders.filter((o) => isActive(o) && o.deliveryDate === iso).reduce((sum, o) => sum + o.garments.length, 0);
+}
+
+export function loadForDate(iso: string, orders?: Order[], dailyCapacity?: number): number | null {
+  const cap = dailyCapacity ?? dailyGarmentCapacityFromSettings();
+  if (orders) {
+    const booked = bookedGarmentDays(iso, orders);
+    if (cap <= 0) return null;
+    return Math.round((booked / cap) * 100);
+  }
   const idx = differenceInCalendarDays(parseISO(iso), parseISO(capacityStart));
   if (idx < 0 || idx >= dailyLoadPct.length) return null;
   return dailyLoadPct[idx];
 }
 
-/** From this load the workshop is full: booking a regular garment needs a reason. */
 export const FULL_PCT = 95;
-export function isFullDay(iso: string): boolean {
-  return (loadForDate(iso) ?? 0) >= FULL_PCT;
+export function isFullDay(iso: string, orders?: Order[]): boolean {
+  return (loadForDate(iso, orders) ?? 0) >= FULL_PCT;
 }
 
 export function levelFor(pct: number): CapacityLevel {
@@ -37,10 +57,10 @@ export function levelFor(pct: number): CapacityLevel {
   return 'available';
 }
 
-export function suggestDeliveryDate(minDays: number): string {
+export function suggestDeliveryDate(minDays: number, orders?: Order[]): string {
   for (let d = minDays; d < minDays + 40; d++) {
     const iso = todayPlus(d);
-    const load = loadForDate(iso);
+    const load = loadForDate(iso, orders);
     if (load !== null && load < 85) return iso;
   }
   return todayPlus(minDays);

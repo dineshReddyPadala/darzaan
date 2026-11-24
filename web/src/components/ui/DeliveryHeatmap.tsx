@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { addMonths, eachDayOfInterval, endOfMonth, endOfWeek, format, isSameMonth, parseISO, startOfMonth, startOfWeek } from 'date-fns';
 import { ChevronLeftIcon, ChevronRightIcon, ZapIcon } from 'lucide-react';
 import { cn } from '../../utils/cn';
+import type { Order } from '../../types';
 import { levelFor, levelMeta, loadForDate, type CapacityLevel } from '../../utils/capacity';
 import { TODAY, TODAY_ISO } from '../../utils/format';
 interface DeliveryHeatmapProps {
@@ -16,6 +17,8 @@ interface DeliveryHeatmapProps {
   startOn?: string;
   /** Colour each day by workshop capacity. Off for calendars where capacity means nothing (trials). */
   showLoad?: boolean;
+  /** Live capacity from orders; omit to use demo static curve. */
+  orders?: Order[];
 }
 export function DeliveryHeatmap({
   selected,
@@ -25,7 +28,8 @@ export function DeliveryHeatmap({
   urgent = [],
   size = 'compact',
   startOn,
-  showLoad = true
+  showLoad = true,
+  orders
 }: DeliveryHeatmapProps) {
   const [month, setMonth] = useState(startOfMonth(selected ? parseISO(selected) : startOn ? parseISO(startOn) : TODAY));
   const days = eachDayOfInterval({
@@ -55,17 +59,17 @@ export function DeliveryHeatmap({
         {days.map((day) => {
         const iso = format(day, 'yyyy-MM-dd');
         if (!isSameMonth(day, month)) return <span key={iso} />;
-        const load = showLoad ? loadForDate(iso) : null;
+        const load = showLoad ? loadForDate(iso, orders) : null;
         const level: CapacityLevel | null = load !== null ? levelFor(load) : null;
         const unavailable = iso < minDate;
         const isSelected = iso === selected;
         const isToday = iso === TODAY_ISO;
         const isUrgent = urgent.includes(iso);
         const marker = markers?.[iso];
-        return <button key={iso} type="button" disabled={!onSelect || unavailable} onClick={() => onSelect?.(iso)} title={load !== null ? `${format(day, 'd MMM')} — ${load}% capacity` : undefined} aria-label={`${format(day, 'd MMMM')}${unavailable ? ', unavailable' : load !== null ? `, ${load}% capacity, ${levelMeta[level as CapacityLevel].label}` : ''}${isUrgent ? ', express garment due' : ''}`} aria-pressed={isSelected} className={cn('relative flex flex-col items-center justify-center rounded-lg text-sm tabular transition-[box-shadow,transform] duration-150 ease-out', size === 'large' ? 'h-16' : 'h-10', isSelected ? 'bg-ink text-white ring-2 ring-ink ring-offset-2' : unavailable ? 'bg-sunken text-ink-muted line-through decoration-ink-muted' : level ? levelMeta[level].cell : 'bg-sunken text-ink-muted', onSelect && !unavailable && !isSelected && 'hover:ring-2 hover:ring-ink active:scale-95', isUrgent && !isSelected && 'ring-2 ring-[#5B21B6] ring-offset-1', 'focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink', !onSelect && 'cursor-default')}>
+        return <button key={iso} type="button" disabled={!onSelect || unavailable} onClick={() => onSelect?.(iso)} title={load !== null ? `${format(day, 'd MMM')} — ${load}% capacity` : undefined} aria-label={`${format(day, 'd MMMM')}${unavailable ? ', unavailable' : load !== null ? `, ${load}% capacity, ${levelMeta[level as CapacityLevel].label}` : ''}${isUrgent ? ', express garment due' : ''}`} aria-pressed={isSelected} className={cn('relative flex flex-col items-center justify-center rounded-lg text-sm tabular transition-[box-shadow,transform] duration-150 ease-out', size === 'large' ? 'h-16' : 'h-10', isSelected ? 'z-[1] ring-2 ring-brand ring-offset-2' : unavailable ? 'bg-sunken text-ink-muted line-through decoration-ink-muted' : level ? levelMeta[level].cell : 'bg-sunken text-ink-muted', onSelect && !unavailable && !isSelected && 'hover:ring-2 hover:ring-brand/40 active:scale-95', isUrgent && !isSelected && 'ring-2 ring-[#5B21B6] ring-offset-1', 'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2', !onSelect && 'cursor-default')}>
               <span className={cn('font-semibold', isToday && 'underline decoration-2 underline-offset-2')}>{format(day, 'd')}</span>
               {size === 'large' && load !== null && !unavailable && <span className="text-[11px] font-medium">{load}%</span>}
-              {isUrgent && <ZapIcon className={cn('absolute left-1 top-1 h-3.5 w-3.5', isSelected || level === 'overloaded' ? 'text-white' : 'text-[#5B21B6]')} aria-hidden />}
+              {isUrgent && <ZapIcon className={cn('absolute left-1 top-1 h-3.5 w-3.5', isSelected ? 'text-brand' : level === 'overloaded' ? 'text-white' : 'text-[#5B21B6]')} aria-hidden />}
               {marker ? <span className="absolute right-1 top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-surface px-1 text-[10px] font-semibold text-ink ring-1 ring-line-strong">{marker}</span> : null}
             </button>;
       })}

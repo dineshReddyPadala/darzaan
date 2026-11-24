@@ -13,6 +13,8 @@ export interface StoreWorkflow {
   graceHours: number;
   leadTimeDays: number;
   tolerance: number;
+  /** Garment finishing slots per calendar day (workshop capacity). */
+  dailyGarmentCapacity: number;
   alterationPolicy: string;
   cancellationPolicy: string;
 }
@@ -77,6 +79,7 @@ export function defaultStoreSettings(notifications?: Record<string, boolean>): S
       graceHours: 4,
       leadTimeDays: 10,
       tolerance: 0.5,
+      dailyGarmentCapacity: 12,
       alterationPolicy: 'First and second alterations are free. Third and later alterations are charged at ₹1,500 each.',
       cancellationPolicy: 'Full refund before production starts; 50% once started. Express orders are non-refundable. Customer fabric must be returned.',
     },
@@ -121,6 +124,7 @@ export function normalizeStoreSettings(value: unknown, notifications?: Record<st
       graceHours: numberOr(workflow.graceHours, base.workflow.graceHours),
       leadTimeDays: numberOr(workflow.leadTimeDays, base.workflow.leadTimeDays),
       tolerance: numberOr(workflow.tolerance, base.workflow.tolerance),
+      dailyGarmentCapacity: boundedInt(workflow.dailyGarmentCapacity, base.workflow.dailyGarmentCapacity, 1, 999),
       alterationPolicy: typeof workflow.alterationPolicy === 'string' ? workflow.alterationPolicy : base.workflow.alterationPolicy,
       cancellationPolicy: typeof workflow.cancellationPolicy === 'string' ? workflow.cancellationPolicy : base.workflow.cancellationPolicy,
     },
@@ -130,6 +134,13 @@ export function normalizeStoreSettings(value: unknown, notifications?: Record<st
 
 function numberOr(value: unknown, fallback: number): number {
   return typeof value === 'number' && Number.isFinite(value) ? value : fallback;
+}
+
+function boundedInt(value: unknown, fallback: number, min: number, max: number): number {
+  const n = typeof value === 'number' && Number.isFinite(value) ? Math.round(value) : fallback;
+  if (n < min) return min;
+  if (n > max) return max;
+  return n;
 }
 
 function booleanFreeNumbers(value: Record<string, unknown>): Record<string, number> {

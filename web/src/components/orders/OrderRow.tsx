@@ -8,6 +8,7 @@ import { daysUntil, dueLabel, fmtDate, inr } from '../../utils/format';
 import { garmentsSummary, isActive, orderStage, stageLabel } from '../../utils/orders';
 import { orderTotals } from '../../utils/pricing';
 import { ordersView, storeStatusLabel } from '../../utils/roles';
+import { formatOrderId } from '../../utils/displayIds';
 import { orderStatusTone, severityTone, toneBar } from '../../utils/status';
 import { Badge } from '../ui/Badge';
 /** Desktop column template — the Payment column only exists for roles that see payments. */
@@ -33,16 +34,17 @@ export function OrderRow({
   const t = orderTotals(order);
   const d = daysUntil(order.deliveryDate);
   const active = isActive(order);
+  const orderCode = formatOrderId(order.id);
   const title = showCustomer ? customerName(order.customerId) : garmentsSummary(order);
-  const sub = showCustomer ? garmentsSummary(order) : order.occasion;
+  const subDetail = showCustomer ? garmentsSummary(order) : order.occasion;
+  const sub = `${orderCode} · ${subDetail}`;
   const dueTone = !active ? 'text-ink-muted' : d < 0 ? 'text-critical' : d <= 2 ? 'text-warning' : 'text-ink-muted';
   return <>
       {/* Phone & tablet: stand-alone card */}
       <Link to={`/orders/${order.id}`} className="flex h-full flex-col rounded-2xl border border-line-strong bg-surface p-4 shadow-soft transition-[border-color] duration-150 ease-out hover:border-ink-subtle lg:hidden">
         <div className="flex items-start justify-between gap-3">
-          <span className="flex items-center gap-2 pt-0.5 font-mono text-sm text-ink-muted">
+          <span className="flex items-center gap-2 pt-0.5">
             {order.risk && <span className={cn('h-2 w-2 shrink-0 rounded-full', toneBar[severityTone[order.risk.severity]])} aria-label="Has exception" />}
-            {order.id}
           </span>
           <span className="flex flex-wrap justify-end gap-1.5">
             {order.priority === 'Express' && <Badge tone="critical"><ZapIcon className="h-3 w-3" />Express</Badge>}
@@ -50,7 +52,7 @@ export function OrderRow({
           </span>
         </div>
         <p className="mt-2 truncate text-[17px] font-semibold text-ink">{title}</p>
-        <p className="truncate text-[15px] text-ink-muted">{sub}</p>
+        <p className="truncate text-sm text-ink-subtle">{sub}</p>
         <div className="mt-auto flex items-baseline justify-between gap-3 pt-4">
           <span className={cn('text-[15px]', dueTone)}>
             {active ? `${dueLabel(order.deliveryDate)} · ` : ''}{fmtDate(order.deliveryDate, 'd MMM')}
@@ -64,7 +66,6 @@ export function OrderRow({
         <div className="min-w-0">
           <div className="flex items-center gap-2">
             {order.risk && <span className={cn('h-2 w-2 shrink-0 rounded-full', toneBar[severityTone[order.risk.severity]])} aria-label="Has exception" />}
-            <span className="font-mono text-sm font-medium text-ink-muted">{order.id}</span>
             {order.priority === 'Express' && <Badge tone="critical"><ZapIcon className="h-3 w-3" />Express</Badge>}
           </div>
           <p className="mt-0.5 truncate text-[15px] font-semibold text-ink">{title}</p>

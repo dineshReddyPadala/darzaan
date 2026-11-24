@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { DndContext, DragOverlay, KeyboardSensor, PointerSensor, TouchSensor, useDraggable, useDroppable, useSensor, useSensors, type DragEndEvent, type DragStartEvent } from '@dnd-kit/core';
@@ -79,7 +79,18 @@ export function ProductionBoard({
     return planner && toCol !== from && !isAlteration(from) && !isAlteration(toCol);
   };
   const mayDrag = (it: BoardItem) => planner && it.garment.stage !== 'alteration';
+  const scrollRef = useRef<HTMLDivElement>(null);
   const active = items.find((i) => idOf(i) === activeId);
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    const firstWithCards = columns.findIndex((col) => items.some((i) => col.stages.includes(i.garment.stage)));
+  if (firstWithCards > 0) {
+      const target = el.querySelectorAll('section[aria-label]')[firstWithCards] as HTMLElement | undefined;
+      target?.scrollIntoView({ behavior: 'smooth', inline: 'start', block: 'nearest' });
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- scroll once when board items first load
+  }, [items.length]);
   const liveGarment = (it: BoardItem) => getOrder(it.order.id)?.garments.find((g) => g.id === it.garment.id);
   const moveCard = (it: BoardItem, toCol: number) => {
     const live = liveGarment(it);
@@ -123,7 +134,8 @@ export function ProductionBoard({
       entity: 'production_task',
       action: 'update'
     });
-    if (ok) logActivity(it.order.id, `${it.garment.subCategory}: Production Assistant ${name}`, 'production');
+    const prev = liveGarment(it)?.productionAssistant;
+    if (ok && prev !== name) logActivity(it.order.id, `${it.garment.subCategory}: Production Assistant assigned to ${name}`, 'production');
     return ok;
   };
   const onDragStart = (e: DragStartEvent) => setActiveId(String(e.active.id));
@@ -148,7 +160,7 @@ export function ProductionBoard({
     moveCard(it, toCol);
   };
   return <DndContext sensors={sensors} onDragStart={onDragStart} onDragEnd={onDragEnd} onDragCancel={() => setActiveId(null)}>
-      <div className="no-scrollbar -mx-4 overflow-x-auto px-4 pb-4 md:-mx-6 md:px-6 lg:-mx-8 lg:px-8">
+      <div ref={scrollRef} className="no-scrollbar relative -mx-4 overflow-x-auto scroll-pl-4 px-4 pr-8 pb-4 md:-mx-6 md:scroll-pl-6 md:px-6 md:pr-10 lg:-mx-8 lg:px-8 lg:pr-12">
         <div className="flex gap-4">
           {columns.map((col, ci) => {
           const cards = items.filter((i) => col.stages.includes(i.garment.stage)).sort((a, b) => b.score - a.score);
@@ -163,7 +175,7 @@ export function ProductionBoard({
                 id: idOf(c)
               }) : undefined} />
                   </DraggableCard>)}
-                {cards.length === 0 && <p className="px-1 py-6 text-center text-sm text-ink-subtle">Clear</p>}
+                {cards.length === 0 && <p className="px-1 py-6 text-center text-sm text-ink-subtle">No garments</p>}
               </Column>;
         })}
         </div>
@@ -206,7 +218,8 @@ function Column({
   } = useDroppable({
     id
   });
-  return <section ref={setNodeRef} aria-label={label} className={cn('flex min-h-[calc(100vh-320px)] w-[264px] shrink-0 flex-col rounded-2xl border p-3 transition-[background-color,border-color] duration-150 ease-out', isOver && canDrop ? 'border-brand bg-brand-soft' : dragging && canDrop ? 'border-dashed border-brand/50 bg-sunken' : 'border-line bg-sunken')}>
+  const narrow = count === 0;
+  return <section ref={setNodeRef} aria-label={label} className={cn('flex min-h-[120px] w-[264px] shrink-0 flex-col rounded-2xl border p-3 transition-[background-color,border-color] duration-150 ease-out', narrow && 'max-w-[120px]', isOver && canDrop ? 'border-brand bg-brand-soft' : dragging && canDrop ? 'border-dashed border-brand/50 bg-sunken' : 'border-line bg-sunken')}>
       <header className="mb-3 flex items-center justify-between px-1">
         <h2 className="text-sm font-semibold">{label}</h2>
         <span className="rounded-full border border-line-strong bg-surface px-2 text-xs font-medium tabular text-ink-muted">{count}</span>

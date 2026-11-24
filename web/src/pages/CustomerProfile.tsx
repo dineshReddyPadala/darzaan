@@ -13,7 +13,10 @@ import { useApp } from '../contexts/AppContext';
 import { fabrics } from '../data/inventory';
 import { cn } from '../utils/cn';
 import { dueLabel, fmtDate, fmtDateTime, inr } from '../utils/format';
+import { employees as teamEmployees } from '../data/team';
+import { formatCustomerId, formatOrderId } from '../utils/displayIds';
 import { garmentTitle, isActive } from '../utils/orders';
+import { ShirtIcon } from 'lucide-react';
 import { orderTotals } from '../utils/pricing';
 import { orderLink } from '../utils/roles';
 import { orderStatusTone } from '../utils/status';
@@ -138,7 +141,7 @@ export function CustomerProfile() {
                 const active = isActive(o);
                 const body = <>
                           <div className="min-w-0 flex-1">
-                            <p className="font-mono text-sm text-ink-muted">{o.id}</p>
+                            <p className="font-mono text-sm text-ink-muted">{formatOrderId(o.id)}</p>
                             <p className="truncate text-[15px] font-medium">{o.garments.map((g) => g.subCategory).join(', ')}</p>
                           </div>
                           <Badge tone={orderStatusTone[o.status]} dot>{o.status}</Badge>
@@ -210,9 +213,7 @@ export function CustomerProfile() {
                 orderId,
                 fabric
               }) => <li key={`${orderId}-${g.id}`} className="flex items-center gap-3 px-5 py-3">
-                      <span className="h-10 w-10 shrink-0 rounded-lg ring-1 ring-inset ring-line" style={{
-                  backgroundColor: fabric?.color ?? '#EDE7DF'
-                }} aria-hidden />
+                      {fabric?.color ? <span className="h-10 w-10 shrink-0 rounded-lg ring-1 ring-inset ring-line" style={{ backgroundColor: fabric.color }} aria-hidden /> : <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-sunken text-ink-muted ring-1 ring-inset ring-line"><ShirtIcon className="h-5 w-5" aria-hidden /></span>}
                       <div className="min-w-0 flex-1">
                         <p className="truncate text-[15px] font-medium">{garmentTitle(g)}</p>
                         <p className="truncate text-sm text-ink-subtle">{fabric ? `${fabric.type} — ${fabric.name}` : g.fabric.pieces.map((p) => p.material).join(', ') || 'Customer’s fabric'} · {orderId}</p>
@@ -231,7 +232,11 @@ export function CustomerProfile() {
             </p>
             {c.email && <p className="mt-1 flex items-center gap-1.5 truncate text-sm text-ink-muted"><MailIcon className="h-3.5 w-3.5 shrink-0" />{c.email}</p>}
             <p className="mt-1 flex items-center gap-1.5 text-sm text-ink-muted"><MapPinIcon className="h-3.5 w-3.5" />{c.city}</p>
-            <p className="mt-3 border-t border-line pt-3 text-sm text-ink-subtle">{c.id} · Designer {c.designer}</p>
+            {(() => {
+              const designer = (c.designer ?? '').trim();
+              const byName = designer && !/^[1-9]\d*$/.test(designer) ? designer : teamEmployees.find((e) => String(e.id) === designer || e.name === designer)?.name;
+              return byName ? <p className="mt-3 border-t border-line pt-3 text-sm text-ink-subtle">{byName} · Designer</p> : <p className="mt-3 border-t border-line pt-3 text-sm text-ink-subtle">{formatCustomerId(c.id)}</p>;
+            })()}
           </InfoCard>
 
           <InfoCard title="Money">

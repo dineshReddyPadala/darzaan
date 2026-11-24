@@ -24,7 +24,8 @@ export function Production() {
     orders,
     role,
     roleDef,
-    user
+    user,
+    can
   } = useApp();
   const [params, setParams] = useSearchParams();
   /** Production Assistants see only their own garments and change status from the Workflow tab. */
@@ -107,7 +108,7 @@ export function Production() {
   return <div className={pageClass}>
       <PageHeader title={readOnly ? 'Workshop board' : 'Production'} subtitle={readOnly ? 'Okhla Workshop · view only' : 'Okhla Workshop'} actions={!showPrices ? <BoardDatePicker value={day} onChange={setDay} laterCount={later.length} /> : undefined} />
 
-      {isPricer && <div className="mb-6">
+      {(isPricer || can('production_task', 'create')) && pricing.open.length > 0 && <div className="mb-6">
           <Segmented<View> value={view} onChange={setView} ariaLabel="Production view" options={[{
         value: 'board',
         label: 'Board'

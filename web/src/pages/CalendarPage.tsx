@@ -112,7 +112,7 @@ export function CalendarPage() {
       <div className={workshopOnly ? '' : 'pt-6'}>
         {tab === 'delivery' && <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_380px]">
             <section className={`${panelClass} p-5`}>
-              <DeliveryHeatmap selected={date} onSelect={setDate} markers={markers} size="large" minDate="2026-10-01" />
+              <DeliveryHeatmap selected={date} onSelect={setDate} markers={markers} orders={active} size="large" minDate="2026-10-01" />
             </section>
             <section className={`${panelClass} h-fit`}>
               <div className="flex items-baseline justify-between gap-3 border-b border-line px-5 py-4">
@@ -160,7 +160,7 @@ export function CalendarPage() {
             <div className="grid min-w-[900px] grid-cols-7 gap-3">
               {week.map((d) => {
               const tasks = boardTasks.filter((t) => t.due === d);
-              const l = loadForDate(d) ?? 0;
+              const l = loadForDate(d, active) ?? 0;
               const isToday = d === TODAY_ISO;
               return <section key={d} aria-current={isToday ? 'date' : undefined} className={cn(panelClass, 'min-h-[320px]')}>
                     <header className="border-b border-line p-3">

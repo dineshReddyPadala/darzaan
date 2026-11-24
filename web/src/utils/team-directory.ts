@@ -29,7 +29,7 @@ export function mergeTeam(users: StaffLogin[], saved: Employee[]): Employee[] {
       role: extra?.role || user.title || roleLabel(user.role),
       roleId: user.role,
       station: extra?.station || user.title || roleLabel(user.role),
-      location: user.location || extra?.location || '',
+      location: user.location?.trim() || extra?.location || '',
       email: user.email,
       storeId: user.storeId,
       mobile: user.mobile || extra?.mobile,

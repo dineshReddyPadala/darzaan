@@ -31,6 +31,11 @@ export function RecordPaymentModal({
     if (open) setAmount(orderTotals(order).balance);
   }, [open, order]);
   const save = () => {
+    const trimmedRef = ref.trim();
+    if (method === 'UPI' && !trimmedRef) {
+      toast.error('Enter the UPI transaction reference');
+      return;
+    }
     const paidAfter = t.paid + amount;
     const ok = updateOrder(order.id, (o) => ({
       ...o,
@@ -38,7 +43,7 @@ export function RecordPaymentModal({
         id: uid('PAY'),
         amount,
         method,
-        reference: ref || `${method} · ${user.name}`,
+        reference: trimmedRef,
         at: nowIso(),
         by: user.name,
         kind: o.payments.length ? 'Balance' : 'Advance'

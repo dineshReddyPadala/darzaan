@@ -106,6 +106,10 @@ export function EmployeeForm() {
       if (!/^[6-9]\d{9}$/.test(form.mobile.replace(/\s/g, ''))) return 'Enter a 10-digit mobile number';
       if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email.trim())) return 'Enter a work email';
     }
+    if (index === 1) {
+      const storeRole = roleDefFor(form.roleId).group === 'Store';
+      if (storeRole && !form.location.trim()) return 'Choose the store or workshop location';
+    }
     if (index === 2 && !editingId) {
       if (!form.line.trim() || !form.city.trim()) return 'Enter the street and city';
       if (!/^\d{6}$/.test(form.pin.trim())) return 'Enter a 6-digit PIN code';

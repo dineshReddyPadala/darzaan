@@ -168,6 +168,16 @@ export function PackagesProvider({
     deadline,
     instructions
   }) => {
+    const openForOrder = packages.filter((p) => p.orderId === order.id && p.status !== 'Delivered' && p.status !== 'Problem');
+    const sameGarments = (p: (typeof packages)[number]) => {
+      const ids = new Set(p.items.filter((i) => i.category === 'garment').map((i) => i.garmentId));
+      return garmentIds.length === ids.size && garmentIds.every((id) => ids.has(id));
+    };
+    const duplicate = openForOrder.find(sameGarments);
+    if (duplicate) {
+      toast.info('Package already sent to packing', { description: duplicate.id });
+      return duplicate.id;
+    }
     const id = nextPackageId(order.id, packages);
     const at = nowIso();
     const first = !packages.some((p) => p.orderId === order.id);
