@@ -86,4 +86,4 @@ Build locally or in CI with `.env.production` (`VITE_API_URL=https://api.darzaan
 
 - `curl -I https://api.darzaan.com/health/live`
 - https://app.darzaan.com — staff login, API calls to `api.darzaan.com`
-- https://darzaan.com — appointment / franchise forms (CORS)
+- https://darzaan.com — appointment / franchise forms (CORS). Marketing build must use `VITE_API_URL=https://api.darzaan.com`; nginx on `darzaan.com` also proxies `/api/` to the gateway as a fallback.

@@ -21,6 +21,9 @@ export type FranchisePayload = {
 
 const BASE = import.meta.env.VITE_API_URL || '';
 
+const CONFIG_ERROR =
+  'Unable to reach our booking service. If this continues, contact the studio — the site may need to be updated.';
+
 async function request<T>(path: string, options?: RequestInit): Promise<T> {
   let response: Response;
   try {
@@ -31,7 +34,22 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
   } catch {
     throw new Error('Unable to connect to our booking service. Please try again shortly.');
   }
-  const payload = await response.json().catch(() => null) as { error?: { message?: unknown } } | null;
+
+  const text = await response.text();
+  const trimmed = text.trimStart();
+  if (trimmed.startsWith('<!') || trimmed.startsWith('<html')) {
+    throw new Error(CONFIG_ERROR);
+  }
+
+  let payload: { error?: { message?: unknown } } | null = null;
+  if (text) {
+    try {
+      payload = JSON.parse(text) as { error?: { message?: unknown } };
+    } catch {
+      throw new Error(CONFIG_ERROR);
+    }
+  }
+
   if (!response.ok) {
     const message = payload?.error?.message;
     throw new Error(
@@ -42,6 +60,11 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
           : 'Your request could not be completed. Please review your details and try again.',
     );
   }
+
+  if (payload == null) {
+    throw new Error(CONFIG_ERROR);
+  }
+
   return payload as T;
 }
 

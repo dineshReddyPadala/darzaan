@@ -36,8 +36,11 @@ On your machine or CI:
 
 ```bash
 cd web && npm run build
+cp marketing_website/.env.production.example marketing_website/.env.production
 cd marketing_website && npm run build
 ```
+
+Marketing production builds **require** `VITE_API_URL=https://api.darzaan.com` in `.env.production` (the Vite config fails the build otherwise). Reload nginx after copying an updated [`darzaan.conf`](darzaan.conf) so `darzaan.com` proxies `/api/` to the gateway as a safety net.
 
 Copy to the server (example):
 
